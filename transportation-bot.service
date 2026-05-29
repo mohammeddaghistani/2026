@@ -1,0 +1,16 @@
+[Unit]
+Description=Transportation Bot (Telegram PDF/Image Extractor)
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/transportation-bot
+ExecStart=/usr/bin/python3 /home/ubuntu/transportation-bot/bot.py
+Restart=always
+RestartSec=5
+StandardOutput=append:/home/ubuntu/transportation-bot/bot.log
+StandardError=append:/home/ubuntu/transportation-bot/bot.log
+
+[Install]
+WantedBy=multi-user.target
