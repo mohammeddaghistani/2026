@@ -1158,7 +1158,8 @@ def admin_users_delete(uid):
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    print(f"🌍 Server running on http://0.0.0.0:{port}")
+    host = os.environ.get("HOST", "127.0.0.1")
+    print(f"🌍 Server running on http://{host}:{port}")
     print(f"👑 Admin panel: http://localhost:{port}/admin")
     print(f"📋 Organizer login: http://localhost:{port}/login")
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(host=host, port=port, debug=True)
