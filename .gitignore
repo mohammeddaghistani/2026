@@ -1,0 +1,9 @@
+.env
+bot.pem
+*.pyc
+__pycache__/
+downloads/
+.DS_Store
+*.jpeg
+*.jpg
+E-itinerary_260527_222636.pdf
