@@ -46,6 +46,20 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_pilgrims_name ON pilgrims(name);
         CREATE INDEX IF NOT EXISTS idx_pilgrims_flight ON pilgrims(flight_number);
     """)
+    for col in ["nationality", "departure_time", "departure_location", "declaration", "status", "status_updated_by", "status_updated_at"]:
+        try:
+            conn.execute(f"ALTER TABLE pilgrims ADD COLUMN {col} TEXT DEFAULT ''")
+        except Exception:
+            pass
+    conn.executescript("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'organizer',
+            created_at TEXT NOT NULL
+        );
+    """)
     conn.commit()
     conn.close()
 
@@ -70,8 +84,8 @@ def save_extraction(
     tkt = tickets.get("ticket_number", "")
     for p in pilgrims:
         conn.execute(
-            "INSERT INTO pilgrims (extraction_id, user_id, name, flight_number, ticket_number, seat, airline, passport, date, gate, booking, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO pilgrims (extraction_id, user_id, name, flight_number, ticket_number, seat, airline, passport, date, gate, booking, nationality, departure_time, departure_location, declaration, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (eid, user_id, p.get("name", ""),
              flight, tkt,
              tickets.get("seat", ""),
@@ -80,6 +94,10 @@ def save_extraction(
              tickets.get("date", ""),
              tickets.get("gate", ""),
              tickets.get("booking", ""),
+             tickets.get("nationality", ""),
+             tickets.get("departure_time", ""),
+             tickets.get("departure_location", ""),
+             tickets.get("declaration", ""),
              now)
         )
     conn.commit()
@@ -166,6 +184,32 @@ def get_pilgrims_by_flight(user_id: int) -> list:
     return [dict(r) for r in rows]
 
 
+STATUS_OPTIONS = [
+    ("processing", "جاري المعالجة | Processing"),
+    ("under_action", "تحت الإجراء | Under Action"),
+    ("completed", "تم إكمال اللازم | Completed"),
+    ("departed", "الحاج مغادر | Departed"),
+]
+
+def update_status(pid: int, status: str, updated_by: str) -> bool:
+    conn = get_db()
+    now = datetime.utcnow().isoformat()
+    cur = conn.execute(
+        "UPDATE pilgrims SET status = ?, status_updated_by = ?, status_updated_at = ? WHERE id = ?",
+        (status, updated_by, now, pid)
+    )
+    conn.commit()
+    ok = cur.rowcount > 0
+    conn.close()
+    return ok
+
+def get_pilgrim(pid: int):
+    conn = get_db()
+    row = conn.execute("SELECT * FROM pilgrims WHERE id = ?", (pid,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
 def passport_exists(passport: str) -> bool:
     conn = get_db()
     row = conn.execute(
@@ -188,6 +232,55 @@ def get_all_pilgrims(search: str = "", limit: int = 500) -> list:
         ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+def get_all_users() -> list:
+    conn = get_db()
+    rows = conn.execute("SELECT id, username, role, created_at FROM users ORDER BY created_at DESC").fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def create_user(username: str, password: str, role: str = "organizer") -> int:
+    conn = get_db()
+    now = datetime.utcnow().isoformat()
+    try:
+        cur = conn.execute(
+            "INSERT INTO users (username, password, role, created_at) VALUES (?, ?, ?, ?)",
+            (username, password, role, now)
+        )
+        conn.commit()
+        uid = cur.lastrowid
+    except Exception as e:
+        uid = None
+    conn.close()
+    return uid
+
+
+def verify_user(username: str, password: str):
+    conn = get_db()
+    row = conn.execute(
+        "SELECT id, username, role FROM users WHERE username = ? AND password = ?",
+        (username, password)
+    ).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def delete_user(uid: int) -> bool:
+    conn = get_db()
+    cur = conn.execute("DELETE FROM users WHERE id = ?", (uid,))
+    conn.commit()
+    deleted = cur.rowcount > 0
+    conn.close()
+    return deleted
+
+
+def count_users() -> int:
+    conn = get_db()
+    row = conn.execute("SELECT COUNT(*) as c FROM users").fetchone()
+    conn.close()
+    return row["c"] if row else 0
 
 
 def get_pilgrims_by_airline(user_id: int) -> list:

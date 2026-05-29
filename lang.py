@@ -3,49 +3,49 @@ DIV = "─" * 30
 START_MSG = (
     "✈️🕋 *Travelers Ghana* 🕋✈️\n"
     f"{DIV}\n\n"
+    "🇬🇧 Send me a PDF or image to extract pilgrim names & ticket details\n"
     "🇸🇦 أرسل لي PDF أو صورة لاستخراج أسماء الحجاج وتفاصيل التذاكر\n\n"
-    "🇬🇧 Send me a PDF or image to extract pilgrim names & ticket details\n\n"
     f"{DIV}\n\n"
-    "*/start* /export /exportall /history /stats /sheets"
+    "*/start* /register /export /exportall /history /stats /sheets"
 )
 
 BILINGUAL = {
-    "processing": "🇸🇦 جاري المعالجة... ⏳\n🇬🇧 Processing... ⏳",
-    "unsupported": "🇸🇦 نوع الملف غير مدعوم ❌\n🇬🇧 Unsupported file ❌",
-    "error": "🇸🇦 خطأ: {}\n🇬🇧 Error: {}",
-    "no_text": "🇸🇦 لم يتم استخراج نص\n🇬🇧 No text extracted",
-    "pilgrims": "👥 الحجاج / Pilgrims",
-    "tickets": "🎫 التذاكر / Tickets",
-    "extracted": "📝 النص المستخرج / Extracted text",
-    "export_prompt": "🇸🇦 /export لتصدير Excel\n🇬🇧 /export for Excel\n🇸🇦 /exportall لتصدير الكل\n🇬🇧 /exportall for all data",
-    "no_data": "🇸🇦 لا توجد بيانات\n🇬🇧 No data",
-    "export_ok": "✅ 🇸🇦 تم التصدير\n✅ 🇬🇧 Exported",
-    "history": "📋 🇸🇦 آخر {} استخراج\n📋 🇬🇧 Last {} extractions",
-    "stats": "📊 🇸🇦 الإحصائيات\n📊 🇬🇧 Statistics",
-    "group_flight": "✈️ حسب الرحلة / By Flight",
-    "group_airline": "🏢 حسب الشركة / By Airline",
-    "search": "🔍 بحث / Search",
-    "not_found": "🇸🇦 لم يتم العثور\n🇬🇧 Not found",
-    "qr_found": "✅ 🇸🇦 QR مقروء\n✅ 🇬🇧 QR detected",
-    "no_qr": "🇸🇦 لا يوجد QR\n🇬🇧 No QR found",
+    "processing": "🇬🇧 Processing... ⏳\n🇸🇦 جاري المعالجة... ⏳",
+    "unsupported": "🇬🇧 Unsupported file ❌\n🇸🇦 نوع الملف غير مدعوم ❌",
+    "error": "🇬🇧 Error: {}\n🇸🇦 خطأ: {}",
+    "no_text": "🇬🇧 No text extracted\n🇸🇦 لم يتم استخراج نص",
+    "pilgrims": "👥 Pilgrims / الحجاج",
+    "tickets": "🎫 Tickets / التذاكر",
+    "extracted": "📝 Extracted text / النص المستخرج",
+    "export_prompt": "🇬🇧 /export for Excel\n🇸🇦 /export لتصدير Excel\n🇬🇧 /exportall for all data\n🇸🇦 /exportall لتصدير الكل",
+    "no_data": "🇬🇧 No data\n🇸🇦 لا توجد بيانات",
+    "export_ok": "✅ 🇬🇧 Exported\n✅ 🇸🇦 تم التصدير",
+    "history": "📋 🇬🇧 Last {} extractions\n📋 🇸🇦 آخر {} استخراج",
+    "stats": "📊 🇬🇧 Statistics\n📊 🇸🇦 الإحصائيات",
+    "group_flight": "✈️ By Flight / حسب الرحلة",
+    "group_airline": "🏢 By Airline / حسب الشركة",
+    "search": "🔍 Search / بحث",
+    "not_found": "🇬🇧 Not found\n🇸🇦 لم يتم العثور",
+    "qr_found": "✅ 🇬🇧 QR detected\n✅ 🇸🇦 QR مقروء",
+    "no_qr": "🇬🇧 No QR found\n🇸🇦 لا يوجد QR",
 }
 
 LABEL_MAP = {
-    "flight_number": "✈️ 🇸🇦 رحلة  |  🇬🇧 Flight",
-    "ticket_number": "🎫 🇸🇦 تذكرة  |  🇬🇧 Ticket",
-    "seat": "💺 🇸🇦 مقعد  |  🇬🇧 Seat",
-    "date": "📅 🇸🇦 تاريخ  |  🇬🇧 Date",
-    "gate": "🚪 🇸🇦 بوابة  |  🇬🇧 Gate",
-    "airline": "🏢 🇸🇦 طيران  |  🇬🇧 Airline",
-    "passport": "🛂 🇸🇦 جواز  |  🇬🇧 Passport",
-    "booking": "📋 🇸🇦 حجز  |  🇬🇧 Booking",
-    "class": "💎 🇸🇦 درجة  |  🇬🇧 Class",
-    "destination": "🏁 🇸🇦 إلى  |  🇬🇧 To",
-    "origin": "📍 🇸🇦 من  |  🇬🇧 From",
-    "route": "🛤️ 🇸🇦 مسار  |  🇬🇧 Route",
-    "hid": "🆔 🇸🇦 رقم الحاج  |  🇬🇧 HID",
-    "booking_ref": "🔖 🇸🇦 مرجع الحجز  |  🇬🇧 Ref",
-    "passenger": "👤 🇸🇦 مسافر  |  🇬🇧 Passenger",
+    "flight_number": "✈️ 🇬🇧 Flight  |  🇸🇦 رحلة",
+    "ticket_number": "🎫 🇬🇧 Ticket  |  🇸🇦 تذكرة",
+    "seat": "💺 🇬🇧 Seat  |  🇸🇦 مقعد",
+    "date": "📅 🇬🇧 Date  |  🇸🇦 تاريخ",
+    "gate": "🚪 🇬🇧 Gate  |  🇸🇦 بوابة",
+    "airline": "🏢 🇬🇧 Airline  |  🇸🇦 طيران",
+    "passport": "🛂 🇬🇧 Passport  |  🇸🇦 جواز",
+    "booking": "📋 🇬🇧 Booking  |  🇸🇦 حجز",
+    "class": "💎 🇬🇧 Class  |  🇸🇦 درجة",
+    "destination": "🏁 🇬🇧 To  |  🇸🇦 إلى",
+    "origin": "📍 🇬🇧 From  |  🇸🇦 من",
+    "route": "🛤️ 🇬🇧 Route  |  🇸🇦 مسار",
+    "hid": "🆔 🇬🇧 HID  |  🇸🇦 رقم الحاج",
+    "booking_ref": "🔖 🇬🇧 Ref  |  🇸🇦 مرجع الحجز",
+    "passenger": "👤 🇬🇧 Passenger  |  🇸🇦 مسافر",
 }
 
 

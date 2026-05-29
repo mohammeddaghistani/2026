@@ -5,11 +5,13 @@ from pathlib import Path
 from io import BytesIO
 
 from dotenv import load_dotenv
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application,
     CommandHandler,
     MessageHandler,
+    CallbackQueryHandler,
+    ConversationHandler,
     filters,
     ContextTypes,
 )
@@ -30,7 +32,7 @@ DATA_DIR.mkdir(exist_ok=True)
 from ocr import extract_text_from_pdf, extract_text_from_image
 from extractor import extract_data
 from qreader import read_qr_from_image, read_qr_from_pdf, extract_ticket_from_qr, HAS_QR
-from db import init_db, save_extraction, get_history, get_stats, get_pilgrims_by_flight, get_pilgrims_by_airline
+from db import init_db, save_extraction, get_history, get_stats, get_pilgrims_by_flight, get_pilgrims_by_airline, passport_exists
 from lang import t, label, START_MSG, DIV
 from sheets import export_to_sheets
 
@@ -38,6 +40,19 @@ init_db()
 
 user_data_store = {}
 ALLOWED_EXTS = {".pdf", ".jpg", ".jpeg", ".png", ".tiff", ".tif", ".bmp", ".webp"}
+
+# ── Registration conversation states ──
+REG_NAME, REG_PASSPORT, REG_DEP_DATE, REG_DEP_TIME, REG_FLIGHT, REG_LOCATION, REG_FILE_TICKET, REG_FILE_PASSPORT, REG_DECLARATION = range(9)
+
+LOCATION_KEYBOARD = InlineKeyboardMarkup([
+    [InlineKeyboardButton("✈️ Jeddah Airport (KAIA)", callback_data="loc:Jeddah Airport (KAIA)")],
+    [InlineKeyboardButton("✈️ Medina Airport", callback_data="loc:Medina Airport")],
+    [InlineKeyboardButton("🛃 Land Border", callback_data="loc:Land Border")],
+])
+
+AGREE_KEYBOARD = InlineKeyboardMarkup([
+    [InlineKeyboardButton("✅ I Agree / أوافق", callback_data="agree:yes")],
+])
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -364,6 +379,228 @@ async def sheets_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await update.message.reply_text(result)
 
 
+# ────────────────────── Registration Conversation ──────────────────────
+
+async def register_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    context.user_data["reg"] = {}
+    await update.message.reply_text(
+        "📋 *تسجيل حاج جديد | New Pilgrim Registration*\n"
+        "─" * 20 + "\n\n"
+        "👤 *1/8* الاسم الكامل للحاج (كما هو في الجواز)\n"
+        "Traveler's Full Name (As written in passport)\n\n"
+        "أرسل الاسم | Send the name:"
+    )
+    return REG_NAME
+
+
+async def reg_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    context.user_data["reg"]["name"] = update.message.text.strip()
+    await update.message.reply_text(
+        "🛂 *2/8* رقم جواز السفر\n"
+        "Passport Number\n\n"
+        "أرسل رقم الجواز (بدون مسافات) | Send passport number (no spaces):"
+    )
+    return REG_PASSPORT
+
+
+async def reg_passport(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    passport = update.message.text.strip()
+    if " " in passport:
+        await update.message.reply_text("❌ رقم الجواز لا يقبل مسافات | No spaces allowed\nأعد الإرسال | Send again:")
+        return REG_PASSPORT
+    if passport_exists(passport):
+        await update.message.reply_text(
+            "❌ هذا الجواز مسجل مسبقاً!\n"
+            "This passport is already registered!\n\n"
+            "للاستفسار تواصل مع الإدارة | Contact admin for help.\n"
+            "أرسل /register لتجربة جواز آخر | Send /register to try another passport."
+        )
+        return ConversationHandler.END
+    context.user_data["reg"]["passport"] = passport
+    await update.message.reply_text(
+        "✅ تم حفظ الجواز | Passport saved\n─" * 15 + "\n\n"
+        "📅 *3/8* تاريخ المغادرة\n"
+        "Departure Date\n\n"
+        "أرسل التاريخ بصيغة YYYY-MM-DD أو اكتب (تخطي/skip)\n"
+        "Send date as YYYY-MM-DD or type (skip):"
+    )
+    return REG_DEP_DATE
+
+
+async def reg_dep_date(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    text = update.message.text.strip()
+    if text.lower() in ("skip", "تخطي"):
+        context.user_data["reg"]["departure_date"] = ""
+    else:
+        context.user_data["reg"]["departure_date"] = text
+    await update.message.reply_text(
+        "⏰ *4/8* وقت المغادرة (حسب التذكرة)\n"
+        "Departure Time (As per ticket)\n\n"
+        "أرسل الوقت بصيغة HH:MM أو اكتب (تخطي/skip)\n"
+        "Send time as HH:MM or type (skip):"
+    )
+    return REG_DEP_TIME
+
+
+async def reg_dep_time(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    text = update.message.text.strip()
+    if text.lower() in ("skip", "تخطي"):
+        context.user_data["reg"]["departure_time"] = ""
+    else:
+        context.user_data["reg"]["departure_time"] = text
+    await update.message.reply_text(
+        "✈️ *5/8* رقم الرحلة / الحافلة\n"
+        "Flight / Bus Number\n\n"
+        "أرسل الرقم أو اكتب (تخطي/skip)\n"
+        "Send the number or type (skip):"
+    )
+    return REG_FLIGHT
+
+
+async def reg_flight(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    text = update.message.text.strip()
+    if text.lower() in ("skip", "تخطي"):
+        context.user_data["reg"]["flight_number"] = ""
+    else:
+        context.user_data["reg"]["flight_number"] = text
+    await update.message.reply_text(
+        "📍 *6/8* مكان المغادرة (المطار/الميناء)\n"
+        "Departure Location\n\n"
+        "اختر من القائمة | Choose from the list:",
+        reply_markup=LOCATION_KEYBOARD
+    )
+    return REG_LOCATION
+
+
+async def reg_location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    query = update.callback_query
+    await query.answer()
+    if query.data.startswith("loc:"):
+        context.user_data["reg"]["departure_location"] = query.data[4:]
+    await query.edit_message_text(
+        f"📍 مكان المغادرة | Location: *{query.data[4:]}*\n─" * 15 + "\n\n"
+        "🎫 *7/8* إرفاق صورة التذكرة (اختياري)\n"
+        "Upload Flight Ticket (optional)\n\n"
+        "أرسل صورة/PDF للتذكرة أو اكتب (تخطي/skip)\n"
+        "Send ticket image/PDF or type (skip):"
+    )
+    return REG_FILE_TICKET
+
+
+async def reg_file_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    text = update.message.text.strip().lower() if update.message.text else ""
+    if text in ("skip", "تخطي"):
+        context.user_data["reg"]["ticket_bytes"] = None
+        context.user_data["reg"]["ticket_name"] = None
+    elif update.message.document or update.message.photo:
+        file = await (update.message.document if update.message.document else update.message.photo[-1]).get_file()
+        context.user_data["reg"]["ticket_bytes"] = bytes(await file.download_as_bytearray())
+        context.user_data["reg"]["ticket_name"] = (update.message.document.file_name if update.message.document else "ticket.jpg")
+    else:
+        context.user_data["reg"]["ticket_bytes"] = None
+        context.user_data["reg"]["ticket_name"] = None
+    await update.message.reply_text(
+        "🛂 *8/8* إرفاق صورة الجواز أو بطاقة نسك (اختياري)\n"
+        "Upload Passport Copy or Nusuk Card (optional)\n\n"
+        "أرسل صورة/PDF أو اكتب (تخطي/skip)\n"
+        "Send image/PDF or type (skip):"
+    )
+    return REG_FILE_PASSPORT
+
+
+async def reg_file_passport(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    text = update.message.text.strip().lower() if update.message.text else ""
+    if text in ("skip", "تخطي"):
+        context.user_data["reg"]["passport_bytes"] = None
+        context.user_data["reg"]["passport_name"] = None
+    elif update.message.document or update.message.photo:
+        file = await (update.message.document if update.message.document else update.message.photo[-1]).get_file()
+        context.user_data["reg"]["passport_bytes"] = bytes(await file.download_as_bytearray())
+        context.user_data["reg"]["passport_name"] = (update.message.document.file_name if update.message.document else "passport.jpg")
+    else:
+        context.user_data["reg"]["passport_bytes"] = None
+        context.user_data["reg"]["passport_name"] = None
+
+    reg = context.user_data["reg"]
+    summary = (
+        "📋 *ملخص الطلب | Request Summary*\n"
+        f"─" * 20 + "\n"
+        f"👤 الاسم | Name: *{reg.get('name', '—')}*\n"
+        f"🛂 الجواز | Passport: *{reg.get('passport', '—')}*\n"
+        f"📅 التاريخ | Date: *{reg.get('departure_date', '—') or '—'}*\n"
+        f"⏰ الوقت | Time: *{reg.get('departure_time', '—') or '—'}*\n"
+        f"✈️ الرحلة | Flight: *{reg.get('flight_number', '—') or '—'}*\n"
+        f"📍 المكان | Location: *{reg.get('departure_location', '—') or '—'}*\n"
+        f"🎫 التذكرة | Ticket: {'✅' if reg.get('ticket_bytes') else '—'}\n"
+        f"🛂 الجواز | Passport: {'✅' if reg.get('passport_bytes') else '—'}\n"
+        f"─" * 20 + "\n\n"
+        "⚖️ *الإقرار | Declaration*\n\n"
+        '"I hereby certify that all the information provided is accurate and matches my official travel documents, and I bear full responsibility for any incorrect data."\n\n'
+        "اضغط للموافقة | Press to agree:",
+    )
+    await update.message.reply_text(summary, reply_markup=AGREE_KEYBOARD)
+    return REG_DECLARATION
+
+
+async def reg_declaration(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    query = update.callback_query
+    await query.answer()
+    if query.data != "agree:yes":
+        await query.edit_message_text("❌ لم يتم الموافقة | Not agreed\nأرسل /register لإعادة المحاولة | Send /register to retry")
+        return ConversationHandler.END
+
+    reg = context.user_data["reg"]
+    user_id = update.effective_user.id
+    username = update.effective_user.username or ""
+
+    tickets = {
+        "passport": reg.get("passport", ""),
+        "departure_date": reg.get("departure_date", ""),
+        "departure_time": reg.get("departure_time", ""),
+        "flight_number": reg.get("flight_number", ""),
+        "departure_location": reg.get("departure_location", ""),
+        "declaration": "agreed",
+    }
+    pilgrims = [{"name": reg.get("name", "")}]
+    raw = ""
+
+    try:
+        eid = save_extraction(
+            user_id=user_id,
+            username=username,
+            file_name=reg.get("ticket_name") or reg.get("passport_name") or "bot_manual",
+            file_type="manual",
+            pilgrims=pilgrims,
+            tickets=tickets,
+            raw_text=raw,
+        )
+    except Exception as e:
+        await query.edit_message_text(f"❌ خطأ | Error: {e}")
+        return ConversationHandler.END
+
+    await query.edit_message_text(
+        f"✅ *تم إرسال الطلب بنجاح!*\n"
+        f"Request submitted successfully!\n\n"
+        f"📋 *رقم الطلب | Request #: {eid}*\n"
+        f"─" * 20 + "\n\n"
+        "📌 سنتواصل معك قريباً\n"
+        "We will contact you soon.\n\n"
+        "/register لطلب جديد | New request\n"
+        "/start للقائمة الرئيسية | Main menu"
+    )
+    return ConversationHandler.END
+
+
+async def reg_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    await update.message.reply_text("❌ تم الإلغاء | Cancelled\n/register لبدء طلب جديد")
+    return ConversationHandler.END
+
+
+async def reg_fallback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    await update.message.reply_text("❌ إدخال غير صحيح | Invalid input\nأرسل /register لبدء طلب جديد")
+    return ConversationHandler.END
+
+
 def main() -> None:
     if not TOKEN:
         logger.error("BOT_TOKEN not set")
@@ -372,14 +609,38 @@ def main() -> None:
 
     app = Application.builder().token(TOKEN).build()
 
+    reg_conv = ConversationHandler(
+        entry_points=[CommandHandler("register", register_start)],
+        states={
+            REG_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, reg_name)],
+            REG_PASSPORT: [MessageHandler(filters.TEXT & ~filters.COMMAND, reg_passport)],
+            REG_DEP_DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, reg_dep_date)],
+            REG_DEP_TIME: [MessageHandler(filters.TEXT & ~filters.COMMAND, reg_dep_time)],
+            REG_FLIGHT: [MessageHandler(filters.TEXT & ~filters.COMMAND, reg_flight)],
+            REG_LOCATION: [CallbackQueryHandler(reg_location, pattern="^loc:")],
+            REG_FILE_TICKET: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, reg_file_ticket),
+                MessageHandler(filters.Document.ALL | filters.PHOTO, reg_file_ticket),
+            ],
+            REG_FILE_PASSPORT: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, reg_file_passport),
+                MessageHandler(filters.Document.ALL | filters.PHOTO, reg_file_passport),
+            ],
+            REG_DECLARATION: [CallbackQueryHandler(reg_declaration, pattern="^agree:")],
+        },
+        fallbacks=[CommandHandler("cancel", reg_cancel), MessageHandler(filters.COMMAND, reg_fallback)],
+        per_message=False,
+    )
+
+    app.add_handler(reg_conv)
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("export", export_handler))
     app.add_handler(CommandHandler("exportall", exportall_handler))
     app.add_handler(CommandHandler("history", history_handler))
     app.add_handler(CommandHandler("stats", stats_handler))
     app.add_handler(CommandHandler("sheets", sheets_handler))
-    app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
-    app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
+    app.add_handler(MessageHandler(filters.Document.ALL & ~filters.COMMAND, handle_document))
+    app.add_handler(MessageHandler(filters.PHOTO & ~filters.COMMAND, handle_photo))
 
     print("✅ Bot running / البوت يعمل")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
