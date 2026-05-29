@@ -41,6 +41,12 @@ E_TICKET_RE = re.compile(r"\b\d{3}-\d{9,10}\b")
 HID_RE = re.compile(r"\b\d{12,20}\b")
 PPID_RE = re.compile(r"\b\d{5,10}\b")
 
+# زمان الإقلاع: 10:30, 10:30 AM, 22:30, Departure: 10:30, STD: 10:30
+TIME_RE = re.compile(r"\b(\d{1,2}:\d{2})\s*(AM|PM)?\b", re.IGNORECASE)
+
+# JED/Jeddah كلمات مفتاحية
+JED_WORDS = re.compile(r"(JED|JEDDAH|جدة|جده)", re.IGNORECASE)
+
 
 def extract_nusuk_data(text: str, tickets: dict):
     hid_label = re.search(r"HID[\s:]*(\d{12,20})", text)
@@ -100,9 +106,50 @@ def extract_itinerary_data(text: str, pilgrims: list, tickets: dict, seen_names:
     if dates and "date" not in tickets:
         tickets["date"] = dates[0]
 
-    routes = re.findall(r"(Taif|Cairo|London|Jeddah|Medina|Mecca)\s*-\s*(Taif|Cairo|London|Jeddah|Medina|Mecca)", text)
+    # كشف مسار الرحلة (تحديث ليشمل JED وجدة)
+    route_cities = r"(Taif|Cairo|London|Jeddah|Medina|Mecca|Riyadh|Dammam)"
+    routes = re.findall(rf"({route_cities})\s*[-–]\s*({route_cities})", text)
     if routes:
         tickets["route"] = " → ".join(routes[0])
+        tickets["origin"] = routes[0][0]
+        tickets["destination"] = routes[0][1]
+
+    # كشف وقت الإقلاع (Departure Time)
+    dep_time = re.search(r"(?:Departure|Depart|STD|ETD|إقلاع)\s*[:\-]?\s*(\d{1,2}:\d{2})", text, re.IGNORECASE)
+    if dep_time:
+        tickets["departure_time"] = dep_time.group(1)
+    else:
+        # أي وقت في النص
+        times = TIME_RE.findall(text)
+        if times:
+            tickets["departure_time"] = times[0][0]
+            if times[0][1]:
+                tickets["departure_time"] += " " + times[0][1]
+
+    # تاريخ الرحلة (Flight Date) - تاريخ محدد بعد كلمة Date
+    flight_date = re.search(r"(?:Flight|Departure|تارخ الرحلة)\s*(?:Date|تاريخ)?[:\-]?\s*(\d{1,2}\s+[A-Z][a-z]+\s+\d{4})", text, re.IGNORECASE)
+    if flight_date:
+        tickets["flight_date"] = flight_date.group(1)
+    else:
+        flight_date2 = re.search(r"(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4})", text, re.IGNORECASE)
+        if flight_date2:
+            tickets["flight_date"] = flight_date2.group(1)
+
+
+def is_jed_departure(text: str, tickets: dict) -> bool:
+    origin = tickets.get("origin", "")
+    route = tickets.get("route", "")
+    if JED_WORDS.search(origin):
+        return True
+    if JED_WORDS.search(route) and route.startswith(route[:5]):
+        pass
+    # البحث في النص الخام عن JED بالقرب من from/departure
+    if re.search(r"(?:from|departure|من|مغادرة)\s*.*?(?:JED|Jeddah|جدة|جده)", text, re.IGNORECASE):
+        return True
+    # البحث عن رحلة برقمها ومصدرها JED
+    if re.search(r"(?:(?:JED|Jeddah|جدة|جده)\s*[-–]\s*\w+|JED\d{2,})", text, re.IGNORECASE):
+        return True
+    return False
 
 
 def extract_data(text: str) -> dict:
@@ -126,6 +173,9 @@ def extract_data(text: str) -> dict:
 
     extract_nusuk_data(text, tickets)
     extract_itinerary_data(text, pilgrims, tickets, seen_names)
+
+    # JED filter - check departure from Jeddah
+    tickets["is_jed"] = is_jed_departure(text, tickets)
 
     for line in lines:
         found = False
@@ -162,7 +212,8 @@ def extract_data(text: str) -> dict:
                             "Reference", "Economy", "Class", "Transfer", "Baggage",
                             "Personal", "Please", "Itinerary", "Cairo", "London",
                             "Taif", "Heathrow", "Airport", "International", "June",
-                            "Checked", "Allowance", "Service", "Provider"]
+                            "Checked", "Allowance", "Service", "Provider",
+                            "Jeddah", "Medina", "Mecca", "Riyadh"]
                 if not any(s in candidate for s in skip_eng) and len(candidate) > 5:
                     name = candidate
 
@@ -171,7 +222,8 @@ def extract_data(text: str) -> dict:
             skip_full = ["We advise", "Please note", "Baggage", "Carry-on", "Checked",
                          "Personal", "Flight", "Airline", "Booking", "Reference",
                          "Economy", "Class", "Transfer", "Important", "During",
-                         "United Kingdom", "Cairo", "London", "Taif", "Heathrow"]
+                         "United Kingdom", "Cairo", "London", "Taif", "Heathrow",
+                         "Jeddah", "Medina", "Mecca"]
             if name_clean and len(name_clean) > 2 and name_clean not in skip_full:
                 if not any(skip in name_clean for skip in skip_full):
                     seen_names.add(name_clean)

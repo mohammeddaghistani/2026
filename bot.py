@@ -97,15 +97,23 @@ async def process_file(
 
     lines = []
     if pilgrims:
-        lines.append(f"👥 *{t('pilgrims')}*")
+        lines.append("👥 *Pilgrims*")
         for i, p in enumerate(pilgrims, 1):
             lines.append(f"  {i}. {p['name']}")
         lines.append(DIV)
 
     if tickets:
-        lines.append(f"🎫 *{t('tickets')}*")
+        lines.append("🎫 *Ticket Details*")
+        eng_labels = {
+            "flight_number": "Flight", "ticket_number": "Ticket", "seat": "Seat",
+            "date": "Date", "gate": "Gate", "airline": "Airline", "passport": "Passport",
+            "booking": "Booking", "class": "Class", "destination": "To",
+            "origin": "From", "route": "Route", "departure_time": "Departure Time",
+            "flight_date": "Flight Date", "hid": "HID",
+        }
         for k, v in tickets.items():
-            lines.append(f"  • {label(k)}: `{v}`")
+            lbl = eng_labels.get(k, k.replace("_", " ").title())
+            lines.append(f"  • {lbl}: `{v}`")
         lines.append(DIV)
 
     if qr_data:
@@ -114,7 +122,7 @@ async def process_file(
             lines.append(f"  `{q[:100]}`")
         lines.append(DIV)
 
-    lines.append(f"📝 *{t('extracted')}*")
+    lines.append("📝 *Raw Text*")
     lines.append(f"`{raw[:300]}`")
     if len(raw) > 300:
         lines.append("  ...")

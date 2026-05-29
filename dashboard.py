@@ -28,6 +28,67 @@ from db import get_db, init_db, save_extraction, passport_exists
 ALLOWED_EXTS = {".pdf", ".jpg", ".jpeg", ".png", ".tiff", ".tif", ".bmp", ".webp"}
 init_db()
 
+LANG = {
+    "ar": {
+        "admin_title": "👑 Admin Panel - Travelers Ghana",
+        "admin_login": "🔐 Admin Login",
+        "admin_password": "Password",
+        "login_btn": "Login",
+        "logout_btn": "Logout",
+        "search_placeholder": "Search name - passport - flight",
+        "total_pilgrims": "Total Pilgrims",
+        "total_flights": "Flights",
+        "total_airlines": "Airlines",
+        "download_csv": "Download CSV",
+        "no_data": "No data",
+        "all_submissions": "All Submissions",
+        "source": "Source",
+        "telegram": "Telegram",
+        "web": "Web",
+        "date": "Date",
+        "actions": "Actions",
+        "confirm_delete": "Are you sure?",
+        "deleted": "✅ Deleted",
+        "passport": "Passport",
+        "name": "Name",
+        "flight": "Flight",
+        "ticket": "Ticket",
+        "seat": "Seat",
+        "airline": "Airline",
+        "web_submissions": "Web Submissions",
+        "public_link": "📌 Public Link",
+    },
+    "en": {
+        "admin_title": "👑 Admin Panel - Travelers Ghana",
+        "admin_login": "🔐 Admin Login",
+        "admin_password": "Password",
+        "login_btn": "Login",
+        "logout_btn": "Logout",
+        "search_placeholder": "Search name - passport - flight",
+        "total_pilgrims": "Total Pilgrims",
+        "total_flights": "Flights",
+        "total_airlines": "Airlines",
+        "download_csv": "Download CSV",
+        "no_data": "No data",
+        "all_submissions": "All Submissions",
+        "source": "Source",
+        "telegram": "Telegram",
+        "web": "Web",
+        "date": "Date",
+        "actions": "Actions",
+        "confirm_delete": "Are you sure?",
+        "deleted": "✅ Deleted",
+        "passport": "Passport",
+        "name": "Name",
+        "flight": "Flight",
+        "ticket": "Ticket",
+        "seat": "Seat",
+        "airline": "Airline",
+        "web_submissions": "Web Submissions",
+        "public_link": "📌 Public Link",
+    },
+}
+
 
 def notify_admin(name, passport, flight=""):
     if not BOT_TOKEN or not ADMIN_CHAT_ID:
@@ -70,84 +131,108 @@ def process_file_bytes(file_bytes, file_name):
     return data
 
 
-def handle_submission(file_bytes, file_name, name, passport):
-    data = process_file_bytes(file_bytes, file_name)
-    if "error" in data:
-        return {"error": data["error"]}
+def handle_submission(ticket_bytes, ticket_name, passport_bytes, passport_name, name, passport):
+    ticket_data = process_file_bytes(ticket_bytes, ticket_name) if ticket_bytes else {"pilgrims": [], "tickets": {}, "raw_text": ""}
+    passport_data = process_file_bytes(passport_bytes, passport_name) if passport_bytes else {"pilgrims": [], "tickets": {}, "raw_text": ""}
 
-    pilgrims_list = data.get("pilgrims", [])
-    tickets = data.get("tickets", {})
-    raw = data.get("raw_text", "")
+    if "error" in ticket_data:
+        return {"error": ticket_data["error"]}
+    if "error" in passport_data:
+        return {"error": passport_data["error"]}
 
-    if not pilgrims_list:
-        pilgrims_list = [{"name": name}]
-    else:
-        pilgrims_list[0]["name"] = name
-    tickets["passport"] = passport
+    pilgrims = ticket_data.get("pilgrims", [])
+    tickets = ticket_data.get("tickets", {})
+    pp_pilgrims = passport_data.get("pilgrims", [])
+    pp_tickets = passport_data.get("tickets", {})
+
+    if not pilgrims and pp_pilgrims:
+        pilgrims = pp_pilgrims
+    if pp_tickets.get("passport") and not tickets.get("passport"):
+        tickets["passport"] = pp_tickets.get("passport")
+
+    if name:
+        if not pilgrims:
+            pilgrims = [{"name": name}]
+        else:
+            pilgrims[0]["name"] = name
+    if passport:
+        tickets["passport"] = passport
+
+    is_jed = tickets.get("is_jed", False) or pp_tickets.get("is_jed", False)
+
+    if is_jed:
+        kept = ["flight_number", "departure_time", "flight_date", "date", "route", "airline", "origin", "passport", "is_jed"]
+        tickets = {k: tickets[k] for k in kept if k in tickets}
+
+    raw = ticket_data.get("raw_text", "") + "\n---\n" + passport_data.get("raw_text", "")
+    fname = ticket_name or passport_name or "file"
 
     try:
         save_extraction(
-            user_id=0, username="web", file_name=file_name,
-            file_type=Path(file_name).suffix.lower(),
-            pilgrims=pilgrims_list, tickets=tickets, raw_text=raw,
+            user_id=0, username="web", file_name=fname,
+            file_type=Path(fname).suffix.lower(),
+            pilgrims=pilgrims, tickets=tickets, raw_text=raw,
         )
     except Exception as e:
         return {"error": str(e)}
 
-    notify_admin(name, passport, tickets.get("flight_number", ""))
-    return {"success": True, "pilgrims": pilgrims_list, "tickets": tickets}
+    notify_admin(name, tickets.get("passport", ""), tickets.get("flight_number", ""))
+    return {"success": True, "pilgrims": pilgrims, "tickets": tickets, "is_jed": is_jed}
 
 
 # ────────────────────── Public HTML (static, no Jinja2) ──────────────────────
 
 PUBLIC_HTML = r"""<!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🌍 مسافري غانا - تقديم طلب</title>
+<title>Travelers Ghana - Submit Request</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap');
-:root { --primary: #1a5632; --primary-light: #e8f5e9; --accent: #c9a227; --accent-light: #fff8e1; }
-* { font-family: 'Tajawal', 'Segoe UI', sans-serif; }
-body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height: 100vh; }
-.header { background: linear-gradient(135deg, var(--primary) 0%, #2e7d32 100%); color: #fff; padding: 2rem 0; }
-.header h1 { font-weight: 900; font-size: 1.8rem; margin: 0; }
-.header p { opacity: .85; margin: 0; font-size: .95rem; }
-.header-icon { font-size: 2.5rem; margin-left: 1rem; }
-.card { border: none; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,.08); margin-top: -2rem; }
-.card-header { background: transparent; border-bottom: 2px solid var(--primary-light); padding: 1.2rem 1.5rem; font-weight: 700; }
-.form-control, .form-select { border-radius: 12px; padding: .75rem 1rem; border: 2px solid #e0e0e0; }
-.form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(26,86,50,.15); }
-.btn-primary { background: var(--primary); border: none; border-radius: 12px; padding: .75rem 2rem; font-weight: 700; }
-.btn-primary:hover { background: #0d3d1e; }
-.upload-area { border: 2px dashed #ccc; border-radius: 16px; padding: 2rem; text-align: center; cursor: pointer; transition: .3s; }
-.upload-area:hover { border-color: var(--primary); background: var(--primary-light); }
-.upload-area i { font-size: 3rem; color: #999; }
-.upload-area p { color: #999; margin: .5rem 0 0; }
-.result-card { background: var(--accent-light); border-radius: 12px; padding: 1rem; margin-top: 1rem; }
-.result-item { padding: .3rem 0; }
-.result-label { font-weight: 700; color: #555; }
-.result-value { color: #222; }
-.badge-extracted { background: var(--primary-light); color: var(--primary); font-weight: 700; padding: .4rem .8rem; border-radius: 50px; }
-.alert { border-radius: 12px; }
-footer { text-align: center; padding: 2rem; color: #999; font-size: .85rem; }
-.lang-toggle { position: fixed; top: 1rem; left: 1rem; z-index: 999; }
-.en { direction: ltr; text-align: left; }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+*{font-family:'Inter','Segoe UI',sans-serif}
+body{background:linear-gradient(135deg,#f5f7fa 0%,#c3cfe2 100%);min-height:100vh}
+.header{background:linear-gradient(135deg,#1a5632 0%,#2e7d32 100%);color:#fff;padding:1.5rem 0}
+.header h1{font-weight:800;font-size:1.5rem;margin:0}
+.header p{opacity:.85;margin:0;font-size:.9rem}
+.header-icon{font-size:2rem;margin-right:.8rem}
+.card{border:none;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.08);margin-top:-1.5rem}
+.card-header{background:transparent;border-bottom:2px solid #e8f5e9;padding:1rem 1.25rem;font-weight:700}
+.card-body{padding:1.25rem}
+.form-control{border-radius:10px;padding:.6rem .9rem;border:2px solid #e0e0e0}
+.form-control:focus{border-color:#1a5632;box-shadow:0 0 0 3px rgba(26,86,50,.15)}
+.btn-primary{background:#1a5632;border:none;border-radius:10px;padding:.65rem 1.5rem;font-weight:700}
+.btn-primary:hover{background:#0d3d1e}
+.upload-area{border:2px dashed #ccc;border-radius:12px;padding:1.2rem;text-align:center;cursor:pointer;transition:.2s;margin-bottom:0}
+.upload-area:hover{border-color:#1a5632;background:#e8f5e9}
+.upload-area i{font-size:2rem;color:#999}
+.upload-area p{color:#999;margin:.3rem 0 0;font-size:.9rem}
+.upload-card{background:#f8f9fa;border-radius:12px;padding:1rem;height:100%}
+.upload-card .badge{font-size:.75rem}
+.result-card{background:#fff8e1;border-radius:10px;padding:.8rem;margin-bottom:.8rem}
+.result-item{padding:.15rem 0;font-size:.9rem}
+.result-label{font-weight:600;color:#555;display:inline-block;min-width:130px}
+.result-value{color:#222;font-weight:500}
+.alert{border-radius:10px;font-size:.9rem}
+.admin-link{position:fixed;top:.8rem;right:.8rem;z-index:999;font-size:.8rem}
+footer{text-align:center;padding:1.5rem;color:#999;font-size:.8rem}
+.upload-label{font-weight:600;font-size:.9rem;margin-bottom:.4rem;display:block}
+.upload-label small{font-weight:400;color:#888}
 </style>
 </head>
 <body>
-<a href="#" id="langBtn" class="btn btn-light btn-sm lang-toggle shadow" onclick="toggleLang()">🇬🇧 English</a>
+
+<a href="/admin" class="btn btn-light btn-sm admin-link shadow-sm"><i class="bi bi-shield-lock"></i> Admin</a>
 
 <div class="header">
   <div class="container">
     <div class="d-flex align-items-center">
       <span class="header-icon">✈️🕋</span>
       <div>
-        <h1 id="title">🌍 مسافري غانا - تقديم طلب</h1>
-        <p id="subtitle">تقديم معلومات الحجاج والتذاكر</p>
+        <h1>Travelers Ghana</h1>
+        <p>Upload your ticket and passport to auto-extract your information</p>
       </div>
     </div>
   </div>
@@ -156,221 +241,181 @@ footer { text-align: center; padding: 2rem; color: #999; font-size: .85rem; }
 <div class="container py-4">
   <div class="card">
     <div class="card-header">
-      <i class="bi bi-file-earmark-plus"></i> <span id="formTitle">تقديم طلب جديد</span>
+      <i class="bi bi-file-earmark-plus"></i> New Request
     </div>
-    <div class="card-body p-4">
+    <div class="card-body">
 
       <div id="alertBox" class="alert d-none"></div>
 
       <form id="submitForm" enctype="multipart/form-data">
-        <div class="mb-4">
-          <label class="form-label fw-bold" id="uploadLabel">رفع ملف PDF أو صورة</label>
-          <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
-            <i class="bi bi-cloud-upload"></i>
-            <p id="uploadText">اضغط هنا لرفع ملف</p>
-            <small class="text-muted">PDF, JPG, PNG</small>
+
+        <div class="row mb-3">
+          <div class="col-md-6 mb-3 mb-md-0">
+            <div class="upload-card">
+              <span class="upload-label">📎 Ticket <small>(PDF or image)</small></span>
+              <div class="upload-area" id="ticketUploadArea" onclick="document.getElementById('ticketFile').click()">
+                <i class="bi bi-file-earmark-text"></i>
+                <p id="ticketUploadText">Upload ticket file</p>
+                <small class="text-muted">PDF, JPG, PNG</small>
+              </div>
+              <input type="file" id="ticketFile" name="file_ticket" accept=".pdf,.jpg,.jpeg,.png" class="d-none" onchange="onTicketSelect(this)">
+              <div id="ticketPreview" class="result-card mt-2 d-none">
+                <div class="fw-bold small mb-1"><i class="bi bi-robot"></i> Extracted Ticket Info</div>
+                <div id="ticketFields"></div>
+              </div>
+            </div>
           </div>
-          <input type="file" id="fileInput" name="file" accept=".pdf,.jpg,.jpeg,.png,.tiff,.tif,.bmp,.webp" class="d-none" onchange="onFileSelect(this)">
+          <div class="col-md-6">
+            <div class="upload-card">
+              <span class="upload-label">🛂 Passport / Nusuk Card <small>(image preferred)</small></span>
+              <div class="upload-area" id="passportUploadArea" onclick="document.getElementById('passportFile').click()">
+                <i class="bi bi-person-badge"></i>
+                <p id="passportUploadText">Upload passport or Nusuk card</p>
+                <small class="text-muted">JPG, PNG, PDF</small>
+              </div>
+              <input type="file" id="passportFile" name="file_passport" accept=".pdf,.jpg,.jpeg,.png" class="d-none" onchange="onPassportSelect(this)">
+              <div id="passportPreview" class="result-card mt-2 d-none">
+                <div class="fw-bold small mb-1"><i class="bi bi-robot"></i> Extracted Info</div>
+                <div id="passportFields"></div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div id="extractedPreview" class="result-card d-none">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <span class="badge badge-extracted"><i class="bi bi-robot"></i> <span id="extractedLabel">البيانات المستخرجة</span></span>
+        <div class="row g-2 mb-3">
+          <div class="col-md-6">
+            <label class="form-label fw-bold small mb-1">Pilgrim Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="pilgrimName" name="name" required placeholder="Full name">
           </div>
-          <div id="extractedFields"></div>
-        </div>
-
-        <div class="row">
-          <div class="col-md-6 mb-3">
-            <label class="form-label fw-bold" id="nameLabel">اسم الحاج <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="pilgrimName" name="name" required placeholder="الاسم الكامل">
-          </div>
-          <div class="col-md-6 mb-3">
-            <label class="form-label fw-bold" id="passportLabel">رقم الجواز <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="passportInput" name="passport" required placeholder="رقم الجواز">
+          <div class="col-md-6">
+            <label class="form-label fw-bold small mb-1">Passport Number <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="passportInput" name="passport" required placeholder="Passport number" onblur="checkPassport(this.value)">
+            <small class="text-muted" id="passportStatus"></small>
           </div>
         </div>
 
-        <button type="submit" class="btn btn-primary btn-lg w-100" id="submitBtn">
-          <i class="bi bi-send"></i> <span id="submitLabel">إرسال الطلب</span>
+        <button type="submit" class="btn btn-primary w-100" id="submitBtn">
+          <i class="bi bi-send"></i> Submit Request
         </button>
       </form>
+
+      <div class="text-center mt-2">
+        <small class="text-muted"><i class="bi bi-shield-check"></i> Your data is protected</small>
+      </div>
 
     </div>
   </div>
 </div>
 
-<footer>✈️🕋 Travelers Ghana &mdash; مسافري غانا</footer>
+<footer>✈️🕋 Travelers Ghana</footer>
 
 <script>
-const API = 'https://travelersghana.com/api/submit';
-let lang = 'ar';
-
-const T = {
-  ar: {
-    title: '🌍 مسافري غانا - تقديم طلب',
-    subtitle: 'تقديم معلومات الحجاج والتذاكر',
-    formTitle: 'تقديم طلب جديد',
-    uploadLabel: 'رفع ملف PDF أو صورة',
-    uploadText: 'اضغط هنا لرفع ملف',
-    extractedLabel: 'البيانات المستخرجة',
-    nameLabel: 'اسم الحاج',
-    passportLabel: 'رقم الجواز',
-    namePlaceholder: 'الاسم الكامل',
-    passportPlaceholder: 'رقم الجواز',
-    submitLabel: 'إرسال الطلب',
-    processing: 'جاري المعالجة...',
-    success: '✅ تم إرسال الطلب بنجاح! سيتم التواصل معك قريباً',
-    duplicate: '❌ رقم الجواز هذا موجود مسبقاً',
-    fillFields: '⚠️ الرجاء تعبئة جميع الحقول',
-    selectFile: '⚠️ الرجاء اختيار ملف',
-    error: '❌ حدث خطأ',
-    pilgrims: 'الحجاج',
-    flight: 'الرحلة',
-    ticket: 'التذكرة',
-    airline: 'الطيران',
-    date: 'التاريخ',
-    seat: 'المقعد',
-    passport: 'الجواز',
-    gate: 'البوابة',
-    noData: 'لم يتم استخراج بيانات',
-    extracting: 'جاري الاستخراج...',
-    failed: 'فشل الاستخراج',
-    langBtn: '🇬🇧 English',
-  },
-  en: {
-    title: '🌍 Travelers Ghana - Submit Request',
-    subtitle: 'Submit pilgrim and ticket information',
-    formTitle: 'New Request',
-    uploadLabel: 'Upload PDF or Image',
-    uploadText: 'Click here to upload file',
-    extractedLabel: 'Extracted Data',
-    nameLabel: 'Pilgrim Name',
-    passportLabel: 'Passport Number',
-    namePlaceholder: 'Full name',
-    passportPlaceholder: 'Passport number',
-    submitLabel: 'Submit Request',
-    processing: 'Processing...',
-    success: '✅ Request submitted! We will contact you soon.',
-    duplicate: '❌ This passport number already exists',
-    fillFields: '⚠️ Please fill all fields',
-    selectFile: '⚠️ Please select a file',
-    error: '❌ Error occurred',
-    pilgrims: 'Pilgrims',
-    flight: 'Flight',
-    ticket: 'Ticket',
-    airline: 'Airline',
-    date: 'Date',
-    seat: 'Seat',
-    passport: 'Passport',
-    gate: 'Gate',
-    noData: 'No data extracted',
-    extracting: 'Extracting...',
-    failed: 'Extraction failed',
-    langBtn: '🇸🇦 العربية',
-  }
-};
-
-function toggleLang() {
-  lang = lang === 'ar' ? 'en' : 'ar';
-  applyLang();
-}
-
-function applyLang() {
-  const t = T[lang];
-  document.getElementById('title').textContent = t.title;
-  document.getElementById('subtitle').textContent = t.subtitle;
-  document.getElementById('formTitle').textContent = t.formTitle;
-  document.getElementById('uploadLabel').textContent = t.uploadLabel;
-  document.getElementById('uploadText').textContent = t.uploadText;
-  document.getElementById('extractedLabel').textContent = t.extractedLabel;
-  document.getElementById('nameLabel').innerHTML = t.nameLabel + ' <span class="text-danger">*</span>';
-  document.getElementById('passportLabel').innerHTML = t.passportLabel + ' <span class="text-danger">*</span>';
-  document.getElementById('pilgrimName').placeholder = t.namePlaceholder;
-  document.getElementById('passportInput').placeholder = t.passportPlaceholder;
-  document.getElementById('submitLabel').textContent = t.submitLabel;
-  document.getElementById('langBtn').textContent = T[lang === 'ar' ? 'en' : 'ar'].langBtn;
-  document.dir = lang === 'ar' ? 'rtl' : 'ltr';
-  document.documentElement.lang = lang;
-}
+let ticketData = {};
+let passportData = {};
 
 function showAlert(msg, type) {
   const box = document.getElementById('alertBox');
+  const icon = type === 'error' ? 'bi-exclamation-triangle-fill' : 'bi-check-circle-fill';
   box.className = 'alert alert-' + (type === 'error' ? 'danger' : 'success') + ' d-flex align-items-center';
-  box.innerHTML = '<i class="bi ' + (type === 'error' ? 'bi-exclamation-triangle-fill' : 'bi-check-circle-fill') + ' ms-2"></i> ' + msg;
+  box.innerHTML = '<i class="bi ' + icon + ' me-2"></i> ' + msg;
   box.classList.remove('d-none');
-  setTimeout(() => { box.className = 'alert d-none'; }, 5000);
+  setTimeout(() => { box.className = 'alert d-none'; }, 6000);
 }
 
-function onFileSelect(input) {
-  if (!input.files.length) return;
-  document.getElementById('uploadText').textContent = input.files[0].name;
-  previewFile(input);
-}
+async function previewFile(fileInput, previewId, fieldsId, uploadTextId, isTicket) {
+  if (!fileInput.files.length) return;
+  document.getElementById(uploadTextId).textContent = fileInput.files[0].name;
 
-async function previewFile(input) {
-  if (!input.files.length) return;
-  const t = T[lang];
   const fd = new FormData();
-  fd.append('file', input.files[0]);
+  fd.append('file', fileInput.files[0]);
 
-  document.getElementById('extractedPreview').classList.remove('d-none');
-  document.getElementById('extractedFields').innerHTML = '<div class="text-center py-3"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted">' + t.extracting + '</p></div>';
+  document.getElementById(previewId).classList.remove('d-none');
+  document.getElementById(fieldsId).innerHTML = '<div class="text-center py-2"><div class="spinner-border spinner-border-sm text-primary" role="status"></div><small class="text-muted ms-1">Extracting...</small></div>';
 
   try {
     const res = await fetch('/extract_preview', { method: 'POST', body: fd });
     const data = await res.json();
     if (data.error) {
-      document.getElementById('extractedFields').innerHTML = '<div class="text-danger">' + data.error + '</div>';
+      document.getElementById(fieldsId).innerHTML = '<small class="text-danger">' + data.error + '</small>';
       return;
     }
+
+    if (isTicket) ticketData = data;
+    else passportData = data;
+
     let html = '';
-    if (data.pilgrims && data.pilgrims.length) {
-      html += '<div class="result-item"><span class="result-label">👥 ' + t.pilgrims + ':</span> ';
-      html += data.pilgrims.map(p => '<span class="result-value">' + p.name + '</span>').join(' | ');
-      html += '</div>';
-      if (data.pilgrims[0] && data.pilgrims[0].name) {
-        document.getElementById('pilgrimName').value = data.pilgrims[0].name;
+    if (isTicket) {
+      const t = data.tickets || {};
+      if (t.flight_number) html += '<div class="result-item"><span class="result-label">✈️ Flight:</span><span class="result-value">' + t.flight_number + '</span></div>';
+      if (t.departure_time) html += '<div class="result-item"><span class="result-label">⏰ Departure:</span><span class="result-value">' + t.departure_time + '</span></div>';
+      if (t.flight_date || t.date) html += '<div class="result-item"><span class="result-label">📅 Date:</span><span class="result-value">' + (t.flight_date || t.date) + '</span></div>';
+      if (t.route) html += '<div class="result-item"><span class="result-label">🛤️ Route:</span><span class="result-value">' + t.route + '</span></div>';
+      if (t.airline) html += '<div class="result-item"><span class="result-label">🏢 Airline:</span><span class="result-value">' + t.airline + '</span></div>';
+      if (t.origin) html += '<div class="result-item"><span class="result-label">📍 From:</span><span class="result-value">' + t.origin + '</span></div>';
+      if (t.is_jed) html += '<div class="result-item"><span class="badge bg-success">✈️ JED Flight</span></div>';
+      if (data.pilgrims && data.pilgrims.length) {
+        html += '<div class="result-item"><span class="result-label">👤 Name:</span><span class="result-value">' + data.pilgrims[0].name + '</span></div>';
+        if (!document.getElementById('pilgrimName').value)
+          document.getElementById('pilgrimName').value = data.pilgrims[0].name;
       }
-    }
-    const labels = {
-      flight_number: '✈️ ' + t.flight,
-      ticket_number: '🎫 ' + t.ticket,
-      airline: '🏢 ' + t.airline,
-      date: '📅 ' + t.date,
-      seat: '💺 ' + t.seat,
-      passport: '🛂 ' + t.passport,
-      gate: '🚪 ' + t.gate,
-    };
-    if (data.tickets) {
-      for (const [k, v] of Object.entries(data.tickets)) {
-        if (labels[k]) {
-          html += '<div class="result-item"><span class="result-label">' + labels[k] + ':</span> <span class="result-value">' + v + '</span></div>';
-        }
+      if (!html) html = '<small class="text-muted">No ticket data found</small>';
+    } else {
+      const t = data.tickets || {};
+      if (data.pilgrims && data.pilgrims.length) {
+        html += '<div class="result-item"><span class="result-label">👤 Name:</span><span class="result-value">' + data.pilgrims[0].name + '</span></div>';
+        if (!document.getElementById('pilgrimName').value)
+          document.getElementById('pilgrimName').value = data.pilgrims[0].name;
       }
+      if (t.passport || t.hid) {
+        const pp = t.passport || t.hid;
+        html += '<div class="result-item"><span class="result-label">🛂 Passport:</span><span class="result-value">' + pp + '</span></div>';
+        if (!document.getElementById('passportInput').value)
+          document.getElementById('passportInput').value = pp;
+        checkPassport(pp);
+      }
+      if (t.hid && t.hid !== t.passport) {
+        html += '<div class="result-item"><span class="result-label">🆔 HID:</span><span class="result-value">' + t.hid + '</span></div>';
+      }
+      if (!html) html = '<small class="text-muted">No data extracted</small>';
     }
-    document.getElementById('extractedFields').innerHTML = html || '<div class="text-muted">' + t.noData + '</div>';
+    document.getElementById(fieldsId).innerHTML = html;
   } catch(e) {
-    document.getElementById('extractedFields').innerHTML = '<div class="text-danger">' + t.failed + '</div>';
+    document.getElementById(fieldsId).innerHTML = '<small class="text-danger">Extraction failed</small>';
   }
+}
+
+function onTicketSelect(input) { previewFile(input, 'ticketPreview', 'ticketFields', 'ticketUploadText', true); }
+function onPassportSelect(input) { previewFile(input, 'passportPreview', 'passportFields', 'passportUploadText', false); }
+
+async function checkPassport(val) {
+  const status = document.getElementById('passportStatus');
+  if (!val || val.length < 3) { status.textContent = ''; return; }
+  status.textContent = 'Checking...';
+  try {
+    const res = await fetch('/api/check_passport?passport=' + encodeURIComponent(val));
+    const data = await res.json();
+    status.textContent = data.exists ? '❌ Already registered' : '✅ Available';
+    status.className = data.exists ? 'text-danger' : 'text-success';
+  } catch(e) { status.textContent = ''; }
 }
 
 document.getElementById('submitForm').addEventListener('submit', async function(e) {
   e.preventDefault();
-  const t = T[lang];
   const name = document.getElementById('pilgrimName').value.trim();
   const passport = document.getElementById('passportInput').value.trim();
-  const fileInput = document.getElementById('fileInput');
+  const ticketFile = document.getElementById('ticketFile');
+  const passportFile = document.getElementById('passportFile');
 
-  if (!name || !passport) { showAlert(t.fillFields, 'error'); return; }
-  if (!fileInput.files.length) { showAlert(t.selectFile, 'error'); return; }
+  if (!name || !passport) { showAlert('Please fill all fields', 'error'); return; }
+  if (!ticketFile.files.length && !passportFile.files.length) { showAlert('Please upload at least one file', 'error'); return; }
 
   const btn = document.getElementById('submitBtn');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> ' + t.processing;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processing...';
 
   const fd = new FormData();
-  fd.append('file', fileInput.files[0]);
+  if (ticketFile.files.length) fd.append('file_ticket', ticketFile.files[0]);
+  if (passportFile.files.length) fd.append('file_passport', passportFile.files[0]);
   fd.append('name', name);
   fd.append('passport', passport);
 
@@ -378,22 +423,27 @@ document.getElementById('submitForm').addEventListener('submit', async function(
     const res = await fetch('/api/submit', { method: 'POST', body: fd });
     const data = await res.json();
     if (data.success) {
-      showAlert(t.success, 'success');
+      let msg = '✅ Request submitted! We will contact you soon.';
+      if (!data.is_jed) msg += ' ⚠️ Note: Flight does not depart from JED, saved as reference.';
+      showAlert(msg, 'success');
       document.getElementById('pilgrimName').value = '';
       document.getElementById('passportInput').value = '';
-      document.getElementById('fileInput').value = '';
-      document.getElementById('uploadText').textContent = t.uploadText;
-      document.getElementById('extractedPreview').classList.add('d-none');
+      document.getElementById('passportStatus').textContent = '';
+      ticketFile.value = ''; document.getElementById('ticketUploadText').textContent = 'Upload ticket file';
+      document.getElementById('ticketPreview').classList.add('d-none');
+      passportFile.value = ''; document.getElementById('passportUploadText').textContent = 'Upload passport or Nusuk card';
+      document.getElementById('passportPreview').classList.add('d-none');
+      ticketData = {}; passportData = {};
     } else if (data.duplicate) {
-      showAlert(t.duplicate, 'error');
+      showAlert('❌ This passport number is already registered', 'error');
     } else {
-      showAlert((t.error + ': ' + (data.error || '')), 'error');
+      showAlert('Error: ' + (data.error || 'Unknown'), 'error');
     }
   } catch(e) {
-    showAlert(t.error, 'error');
+    showAlert('Error submitting request', 'error');
   }
   btn.disabled = false;
-  btn.innerHTML = '<i class="bi bi-send"></i> ' + t.submitLabel;
+  btn.innerHTML = '<i class="bi bi-send"></i> Submit Request';
 });
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -632,11 +682,11 @@ body{background:linear-gradient(135deg,#f5f7fa,#c3cfe2);min-height:100vh;display
 <div class="container"><div class="row justify-content-center"><div class="col-md-6">
 <div class="card p-5 text-center">
 <div style="font-size:4rem">✈️🕋</div>
-<h2 class="fw-bold mt-3">مسافري غانا</h2>
-<p class="text-muted">Travelers Ghana</p>
+<h2 class="fw-bold mt-3">Travelers Ghana ✈️🕋</h2>
+<p class="text-muted">Pilgrim &amp; Ticket Information System</p>
 <hr>
-<a href="/form" class="btn btn-primary btn-lg w-100 mb-2">📝 تقديم طلب جديد</a>
-<a href="/admin" class="btn btn-outline-secondary w-100">🔐 لوحة التحكم</a>
+<a href="/form" class="btn btn-primary btn-lg w-100 mb-2"><i class="bi bi-send"></i> Submit Request</a>
+<a href="/admin" class="btn btn-outline-secondary w-100"><i class="bi bi-shield-lock"></i> Admin Panel</a>
 </div></div></div></div></body></html>"""
 
 
@@ -668,11 +718,24 @@ def api_submit():
     if passport_exists(passport):
         return cors_ok(jsonify({"duplicate": True, "error": "passport_exists"})), 409
 
-    if "file" not in request.files or not request.files["file"].filename:
+    ticket_bytes = None
+    ticket_name = None
+    passport_bytes = None
+    passport_name = None
+
+    if "file_ticket" in request.files and request.files["file_ticket"].filename:
+        f = request.files["file_ticket"]
+        ticket_bytes = f.read()
+        ticket_name = f.filename
+    if "file_passport" in request.files and request.files["file_passport"].filename:
+        f = request.files["file_passport"]
+        passport_bytes = f.read()
+        passport_name = f.filename
+
+    if not ticket_bytes and not passport_bytes:
         return cors_ok(jsonify({"error": "no_file"})), 400
 
-    f = request.files["file"]
-    result = handle_submission(f.read(), f.filename, name, passport)
+    result = handle_submission(ticket_bytes, ticket_name, passport_bytes, passport_name, name, passport)
     if "error" in result:
         return cors_ok(jsonify(result)), 500
     return cors_ok(jsonify(result))
