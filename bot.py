@@ -32,7 +32,7 @@ DATA_DIR.mkdir(exist_ok=True)
 from ocr import extract_text_from_pdf, extract_text_from_image
 from extractor import extract_data
 from qreader import read_qr_from_image, read_qr_from_pdf, extract_ticket_from_qr, HAS_QR
-from db import init_db, save_extraction, get_history, get_stats, get_pilgrims_by_flight, get_pilgrims_by_airline, passport_exists
+from db import init_db, save_extraction, get_history, get_stats, get_pilgrims_by_flight, get_pilgrims_by_airline, passport_exists, lookup_passport_registry
 from lang import t, label, START_MSG, DIV
 from sheets import export_to_sheets
 
@@ -417,12 +417,20 @@ async def reg_passport(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         )
         return ConversationHandler.END
     context.user_data["reg"]["passport"] = passport
+    registry_entry = lookup_passport_registry(passport)
+    name_note = ""
+    if registry_entry and registry_entry.get("name"):
+        context.user_data["reg"]["name"] = registry_entry["name"]
+        name_note = (
+            f"\n\n📋 *Found in registry:* {registry_entry['name']}\n"
+            f"سيتم استخدام هذا الاسم — Name set from registry ✅"
+        )
     await update.message.reply_text(
         "✅ تم حفظ الجواز | Passport saved\n─" * 15 + "\n\n"
         "📅 *3/8* تاريخ المغادرة\n"
         "Departure Date\n\n"
         "أرسل التاريخ بصيغة YYYY-MM-DD أو اكتب (تخطي/skip)\n"
-        "Send date as YYYY-MM-DD or type (skip):"
+        "Send date as YYYY-MM-DD or type (skip):" + name_note
     )
     return REG_DEP_DATE
 

@@ -4,6 +4,7 @@ from datetime import datetime
 from pathlib import Path
 
 DB_PATH = Path("downloads") / "data.db"
+EXCEL_PATH = Path("downloads") / "All_Pilgrims.xlsx"
 
 
 def get_db():
@@ -15,6 +16,21 @@ def get_db():
 def init_db():
     conn = get_db()
     conn.executescript("""
+        CREATE TABLE IF NOT EXISTS pilgrims_registry (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            passport TEXT UNIQUE NOT NULL,
+            unified_permit TEXT,
+            gender TEXT,
+            group_visa TEXT,
+            arrival_status TEXT,
+            border_number TEXT,
+            visa_number TEXT,
+            hospitality_center TEXT,
+            date_of_birth TEXT,
+            created_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_registry_passport ON pilgrims_registry(passport);
         CREATE TABLE IF NOT EXISTS extractions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
@@ -279,6 +295,62 @@ def delete_user(uid: int) -> bool:
 def count_users() -> int:
     conn = get_db()
     row = conn.execute("SELECT COUNT(*) as c FROM users").fetchone()
+    conn.close()
+    return row["c"] if row else 0
+
+
+def lookup_passport_registry(passport: str):
+    conn = get_db()
+    row = conn.execute("SELECT * FROM pilgrims_registry WHERE passport = ?", (passport.strip().upper(),)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def import_excel_registry(excel_path: str = None) -> dict:
+    """Import All_Pilgrims.xlsx into pilgrims_registry table. Returns stats."""
+    import openpyxl
+    path = Path(excel_path or EXCEL_PATH)
+    if not path.exists():
+        return {"error": f"File not found: {path}"}
+    wb = openpyxl.load_workbook(str(path))
+    ws = wb.active
+    rows = list(ws.iter_rows(min_row=2, values_only=True))
+    col_count = len(ws[1])
+    conn = get_db()
+    added, skipped, errors = 0, 0, 0
+    total_before = conn.execute("SELECT COUNT(*) FROM pilgrims_registry").fetchone()[0]
+    for row in rows:
+        if not row or not row[8] or not str(row[8]).strip():
+            skipped += 1
+            continue
+        passport = str(row[8]).strip().upper()
+        name = str(row[0] or "").strip() if col_count > 0 else ""
+        unified_permit = str(row[1] or "").strip() if col_count > 1 else ""
+        gender = str(row[2] or "").strip() if col_count > 2 else ""
+        group_visa = str(row[3] or "").strip() if col_count > 3 else ""
+        arrival_status = str(row[4] or "").strip() if col_count > 4 else ""
+        border_number = str(row[5] or "").strip() if col_count > 5 else ""
+        visa_number = str(row[6] or "").strip() if col_count > 6 else ""
+        hospitality_center = str(row[7] or "").strip() if col_count > 7 else ""
+        date_of_birth = str(row[9] or "").strip() if col_count > 9 else ""
+        now = datetime.utcnow().isoformat()
+        try:
+            conn.execute(
+                "INSERT OR IGNORE INTO pilgrims_registry (name, passport, unified_permit, gender, group_visa, arrival_status, border_number, visa_number, hospitality_center, date_of_birth, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                (name, passport, unified_permit, gender, group_visa, arrival_status, border_number, visa_number, hospitality_center, date_of_birth, now)
+            )
+            added += 1
+        except Exception:
+            errors += 1
+    conn.commit()
+    total_after = conn.execute("SELECT COUNT(*) FROM pilgrims_registry").fetchone()[0]
+    conn.close()
+    return {"added": added, "skipped": skipped, "errors": errors, "total_in_excel": len(rows), "total_in_db": total_after, "new_records": total_after - total_before}
+
+
+def count_registry() -> int:
+    conn = get_db()
+    row = conn.execute("SELECT COUNT(*) as c FROM pilgrims_registry").fetchone()
     conn.close()
     return row["c"] if row else 0
 

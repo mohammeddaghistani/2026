@@ -19,7 +19,7 @@ DB_PATH = Path("downloads") / "data.db"
 from ocr import extract_text_from_pdf, extract_text_from_image
 from extractor import extract_data
 from qreader import read_qr_from_image, read_qr_from_pdf, HAS_QR
-from db import get_db, init_db, save_extraction, passport_exists, create_user, verify_user, get_all_users, delete_user, count_users, update_status, get_pilgrim, STATUS_OPTIONS
+from db import get_db, init_db, save_extraction, passport_exists, create_user, verify_user, get_all_users, delete_user, count_users, update_status, get_pilgrim, STATUS_OPTIONS, lookup_passport_registry, import_excel_registry, count_registry
 
 ALLOWED_EXTS = {".pdf", ".jpg", ".jpeg", ".png", ".tiff", ".tif", ".bmp", ".webp"}
 init_db()
@@ -345,7 +345,11 @@ async function checkPassport(v){
   try{
     const r=await fetch("/api/check_passport?passport="+encodeURIComponent(v)),d=await r.json();
     s.textContent=d.exists?"❌ Already registered":"✅ Available";
-    s.className=d.exists?"text-danger":"text-success"
+    s.className=d.exists?"text-danger":"text-success";
+    if(d.registry&&d.registry.name){
+      const n=document.getElementById("pilgrimName");
+      if(!n.value)n.value=d.registry.name
+    }
   }catch(e){s.textContent=""}
 }
 document.getElementById("submitForm").addEventListener("submit",async function(e){
@@ -450,6 +454,12 @@ ADMIN_HTML = """<!DOCTYPE html>
         <div class="stat-icon fs-3 text-info opacity-50"><i class="bi bi-globe"></i></div>
       </div></div>
     </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card"><div class="d-flex justify-content-between align-items-start">
+        <div><div class="stat-number">{{ stats.registry }}</div><div class="stat-label">Registry</div></div>
+        <div class="stat-icon fs-3 text-secondary opacity-50"><i class="bi bi-database"></i></div>
+      </div></div>
+    </div>
   </div>
 
   <div class="card">
@@ -458,6 +468,7 @@ ADMIN_HTML = """<!DOCTYPE html>
       <div class="d-flex gap-2">
         <a href="/admin/export_csv" class="btn-soft"><i class="bi bi-filetype-csv me-1"></i> CSV</a>
         <a href="/admin/export_xlsx" class="btn-soft"><i class="bi bi-file-earmark-excel me-1"></i> Excel</a>
+        <a href="/admin/import_excel" class="btn-soft" style="background:var(--p);color:#fff;border-color:var(--p)" onclick="return confirm('Import Excel data into registry?')"><i class="bi bi-upload me-1"></i> Import</a>
       </div>
     </div></div>
     <div class="card-body p-3">
@@ -742,7 +753,8 @@ def admin():
     stats = {"total": conn.execute("SELECT COUNT(*) as c FROM pilgrims").fetchone()["c"],
              "flights": conn.execute("SELECT COUNT(DISTINCT flight_number) as c FROM pilgrims WHERE flight_number != ''").fetchone()["c"],
              "airlines": conn.execute("SELECT COUNT(DISTINCT airline) as c FROM pilgrims WHERE airline != ''").fetchone()["c"],
-             "web": conn.execute("SELECT COUNT(*) as c FROM pilgrims WHERE user_id = 0").fetchone()["c"]}
+             "web": conn.execute("SELECT COUNT(*) as c FROM pilgrims WHERE user_id = 0").fetchone()["c"],
+             "registry": conn.execute("SELECT COUNT(*) as c FROM pilgrims_registry").fetchone()["c"]}
     if query:
         rows = conn.execute("SELECT * FROM pilgrims WHERE name LIKE ? OR passport LIKE ? OR flight_number LIKE ? ORDER BY created_at DESC LIMIT 500", (f"%{query}%", f"%{query}%", f"%{query}%")).fetchall()
     else:
@@ -764,6 +776,20 @@ def admin_delete(pid):
     return redirect("/admin")
 
 
+@app.route("/admin/import_excel")
+def admin_import_excel():
+    if not session.get("admin"): return redirect("/admin")
+    # Copy from project root if not in downloads
+    src = Path("All_Pilgrims.xlsx")
+    dst = Path("downloads") / "All_Pilgrims.xlsx"
+    if src.exists() and not dst.exists():
+        import shutil
+        shutil.copy2(str(src), str(dst))
+    result = import_excel_registry()
+    flash_msg = f"✅ Imported: {result.get('new_records',0)} new / {result.get('added',0)} total | Skipped: {result.get('skipped',0)}"
+    return f'<script>alert("{flash_msg}");window.location.href="/admin"</script>'
+
+
 @app.route("/admin/export_csv")
 def admin_export_csv():
     if not session.get("admin"): return redirect("/admin")
@@ -779,7 +805,27 @@ def admin_export_csv():
 @app.route("/api/check_passport", methods=["GET", "OPTIONS"])
 def api_check_passport():
     if request.method == "OPTIONS": return cors_ok(make_response())
-    return cors_ok(jsonify({"exists": passport_exists(request.args.get("passport",""))}))
+    passport = request.args.get("passport","").strip().upper()
+    exists = passport_exists(passport)
+    registry = lookup_passport_registry(passport)
+    return cors_ok(jsonify({"exists": exists, "registry": registry}))
+
+
+@app.route("/api/lookup_passport", methods=["GET", "OPTIONS"])
+def api_lookup_passport():
+    if request.method == "OPTIONS": return cors_ok(make_response())
+    passport = request.args.get("passport","").strip().upper()
+    if not passport:
+        return cors_ok(jsonify({"found": False}))
+    entry = lookup_passport_registry(passport)
+    return cors_ok(jsonify({"found": entry is not None, "data": entry}))
+
+
+@app.route("/api/import_excel", methods=["POST"])
+def api_import_excel():
+    if not session.get("admin"): return cors_ok(jsonify({"error":"unauthorized"})), 401
+    result = import_excel_registry()
+    return cors_ok(jsonify(result))
 
 
 @app.route("/admin/export_xlsx")
