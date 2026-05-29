@@ -62,6 +62,12 @@ SHARED_CSS = (
     + ".secret-badge{font-size:.68rem;color:#c62828;font-weight:800;background:#fff5f5;padding:.15rem .5rem;border-radius:6px;font-family:'SF Mono',monospace}"
     + "footer{text-align:center;padding:2rem;color:#bbb;font-size:.75rem}"
     + "footer::before{content:'';display:block;width:32px;height:1.5px;background:var(--g);margin:0 auto .8rem;opacity:.3}"
+    + "/* Mobile Responsive */"
+    + "@media(max-width:575px){.navbar-brand{font-size:.88rem!important}.navbar .btn{padding:.2rem .45rem!important;font-size:.65rem!important}}"
+    + "@media(max-width:575px){html{font-size:15px}.container-fluid{padding-left:.6rem!important;padding-right:.6rem!important}}"
+    + "@media(max-width:575px){footer{padding:1.2rem .8rem;font-size:.65rem}}"
+    + "@media(max-width:575px){.stat-card{padding:.8rem}.stat-number{font-size:1.2rem}}"
+    + "@media(max-width:575px){.search-box{font-size:.78rem;padding:.4rem .8rem}}"
 )
 
 
@@ -178,10 +184,13 @@ __SHARED_CSS__
 .request-badge{{background:linear-gradient(135deg,var(--p),var(--pd));color:#fff;border-radius:50px;padding:.4rem 1.1rem;font-size:.9rem;font-weight:700;display:inline-block;font-family:var(--fd);box-shadow:0 4px 16px rgba(26,86,50,.15);animation:fadeInUp .45s ease}}
 @keyframes fadeInUp{{from{{opacity:0;transform:translateY(10px)}}to{{opacity:1;transform:translateY(0)}}}}
 @media(min-width:768px){{.hero{{padding:2rem 1rem 4rem}}.hero h1{{font-size:2.2rem}}.card-form-body{{padding:2rem}}.section{{padding:1.4rem}}}}
+@media(max-width:575px){{.hero{{padding:1rem .6rem 3rem}}.hero h1{{font-size:1.2rem}}.hero-icon{{width:52px;height:52px;font-size:1.3rem}}.card-form-body{{padding:1rem .85rem}}.section{{padding:.9rem .8rem}}.container-form{{padding:0 .4rem}}}}
+@media(max-width:575px){{.form-label{{font-size:.72rem}}.form-control,.form-select{{font-size:.82rem;padding:.5rem .65rem}}.section-title{{font-size:.72rem;gap:.35rem}}.btn-submit{{font-size:.82rem;padding:.65rem 1rem}}.upload-area{{padding:.5rem .3rem}}.upload-area i{{font-size:1.2rem}}}}
+@media(max-width:575px){{.declaration-box{{padding:.6rem .7rem}}}}
 </style></head><body>
 
-<div class="hero" style="padding-top:1.2rem">
-  <div style="position:absolute;top:.4rem;left:.6rem;z-index:5">
+<div class="hero">
+  <div style="position:absolute;top:.4rem;left:.4rem;z-index:5">
     <a href="/" style="color:rgba(255,255,255,.5);text-decoration:none;font-size:.72rem;display:flex;align-items:center;gap:.25rem"><i class="bi bi-arrow-left"></i> <span style="font-family:var(--fa)">عودة</span></a>
   </div>
   <div class="hero-icon">🕋</div>
@@ -281,7 +290,7 @@ __SHARED_CSS__
           </div>
           <div class="form-text-hint mb-2">Optional — you can skip</div>
           <div class="row g-2">
-            <div class="col-md-6">
+            <div class="col-12 col-sm-6">
               <label class="form-label"><span class="en">Flight Ticket</span><span class="ar">التذكرة</span></label>
               <div class="upload-area" onclick="document.getElementById('ticketFile').click()">
                 <i class="bi bi-file-earmark-text"></i>
@@ -289,7 +298,7 @@ __SHARED_CSS__
               </div>
               <input type="file" id="ticketFile" name="file_ticket" accept=".pdf,.jpg,.jpeg,.png" class="d-none" onchange="updateFileName(this,'ticketUploadText')">
             </div>
-            <div class="col-md-6">
+            <div class="col-12 col-sm-6">
               <label class="form-label"><span class="en">Passport / Nusuk</span><span class="ar">الجواز أو نسك</span></label>
               <div class="upload-area" onclick="document.getElementById('passportFile').click()">
                 <i class="bi bi-person-badge"></i>
@@ -418,47 +427,49 @@ ADMIN_HTML = """<!DOCTYPE html>
 .search-box:focus{border-color:var(--g);box-shadow:0 0 0 4px rgba(201,162,39,.1);background:#fff}
 .btn-soft{background:#fff;border:1.5px solid #e5e7eb;border-radius:50px;padding:.3rem .7rem;font-size:.72rem;font-weight:600;color:#555;transition:all .2s;text-decoration:none}
 .btn-soft:hover{background:var(--p);color:#fff;border-color:var(--p)}
+@media(max-width:575px){.stat-number{font-size:1.1rem}.stat-card{padding:.7rem}.btn-soft{font-size:.65rem;padding:.2rem .45rem}}
+@media(max-width:575px){.table{font-size:.7rem}.table th{padding:.3rem .25rem}.table td{padding:.25rem}.passport-text{font-size:.65rem;letter-spacing:.3px}.secret-badge{font-size:.55rem}}
 </style></head><body>
 
 <nav class="navbar navbar-expand-lg navbar-dark">
   <div class="container-fluid">
     <a class="navbar-brand" href="/admin"><i class="bi bi-shield-lock me-2"></i>{{ L.admin_title }}</a>
-    <div class="d-flex gap-2 align-items-center">
-      <a href="/" class="btn btn-sm btn-outline-light py-1 px-2"><i class="bi bi-house"></i></a>
-      <a href="/admin/users" class="btn btn-sm btn-outline-light py-1"><i class="bi bi-people me-1"></i>{{ 'المستخدمين' if lang == 'ar' else 'Users' }}</a>
-      <a href="?lang={{ 'en' if lang == 'ar' else 'ar' }}" class="btn btn-sm btn-outline-light py-1">{{ '🇸🇦' if lang == 'ar' else '🇬🇧' }}</a>
-      <a href="/admin/logout" class="btn btn-sm btn-outline-light py-1"><i class="bi bi-box-arrow-right"></i></a>
+    <div class="d-flex gap-1 align-items-center" style="gap:.2rem!important">
+      <a href="/" class="btn btn-sm btn-outline-light py-1 px-1"><i class="bi bi-house"></i></a>
+      <a href="/admin/users" class="btn btn-sm btn-outline-light py-1 px-1 d-none d-sm-inline-flex"><i class="bi bi-people me-1"></i>{{ 'المستخدمين' if lang == 'ar' else 'Users' }}</a>
+      <a href="?lang={{ 'en' if lang == 'ar' else 'ar' }}" class="btn btn-sm btn-outline-light py-1 px-1">{{ '🇸🇦' if lang == 'ar' else '🇬🇧' }}</a>
+      <a href="/admin/logout" class="btn btn-sm btn-outline-light py-1 px-1"><i class="bi bi-box-arrow-right"></i></a>
     </div>
   </div>
 </nav>
 
-<div class="container-fluid py-4 px-lg-4">
-  <div class="row g-3 mb-4">
-    <div class="col-6 col-md-3">
+<div class="container-fluid py-3 px-2 px-sm-4">
+  <div class="row g-2 g-sm-3 mb-3 mb-sm-4">
+    <div class="col-6 col-md-3 col-lg">
       <div class="stat-card"><div class="d-flex justify-content-between align-items-start">
         <div><div class="stat-number">{{ stats.total }}</div><div class="stat-label">{{ L.total_pilgrims }}</div></div>
         <div class="stat-icon fs-3 text-success opacity-50"><i class="bi bi-people"></i></div>
       </div></div>
     </div>
-    <div class="col-6 col-md-3">
+    <div class="col-6 col-md-3 col-lg">
       <div class="stat-card"><div class="d-flex justify-content-between align-items-start">
         <div><div class="stat-number">{{ stats.flights }}</div><div class="stat-label">{{ L.total_flights }}</div></div>
         <div class="stat-icon fs-3 text-primary opacity-50"><i class="bi bi-airplane"></i></div>
       </div></div>
     </div>
-    <div class="col-6 col-md-3">
+    <div class="col-6 col-md-3 col-lg">
       <div class="stat-card"><div class="d-flex justify-content-between align-items-start">
         <div><div class="stat-number">{{ stats.airlines }}</div><div class="stat-label">{{ L.total_airlines }}</div></div>
         <div class="stat-icon fs-3 text-warning opacity-50"><i class="bi bi-building"></i></div>
       </div></div>
     </div>
-    <div class="col-6 col-md-3">
+    <div class="col-6 col-md-3 col-lg">
       <div class="stat-card"><div class="d-flex justify-content-between align-items-start">
         <div><div class="stat-number">{{ stats.web }}</div><div class="stat-label">{{ L.web_submissions }}</div></div>
         <div class="stat-icon fs-3 text-info opacity-50"><i class="bi bi-globe"></i></div>
       </div></div>
     </div>
-    <div class="col-6 col-md-3">
+    <div class="col-6 col-md-3 col-lg">
       <div class="stat-card"><div class="d-flex justify-content-between align-items-start">
         <div><div class="stat-number">{{ stats.registry }}</div><div class="stat-label">Registry</div></div>
         <div class="stat-icon fs-3 text-secondary opacity-50"><i class="bi bi-database"></i></div>
@@ -485,30 +496,30 @@ ADMIN_HTML = """<!DOCTYPE html>
       <div class="table-responsive" style="border-radius:12px;border:1px solid #f0f0f0">
         <table class="table table-hover align-middle mb-0">
           <thead><tr>
-            <th style="width:48px">{{ L.source }}</th>
-            <th>🔐</th><th>{{ L.name }}</th><th>{{ L.passport }}</th>
-            <th>{{ L.flight }}</th><th>{{ L.departure_time }}</th><th>{{ L.departure_location }}</th>
-            <th>Status</th><th>{{ L.date }}</th><th style="width:40px"></th>
+            <th style="width:32px" class="d-none d-sm-table-cell">{{ L.source }}</th>
+            <th style="width:48px">🔐</th><th>{{ L.name }}</th><th class="d-none d-sm-table-cell">{{ L.passport }}</th>
+            <th>{{ L.flight }}</th><th class="d-none d-md-table-cell">{{ L.departure_time }}</th><th class="d-none d-md-table-cell">{{ L.departure_location }}</th>
+            <th>Status</th><th class="d-none d-sm-table-cell">{{ L.date }}</th><th style="width:32px"></th>
           </tr></thead>
           <tbody>
             {% set styles={'processing':'bg-warning-subtle text-warning-emphasis','under_action':'bg-info-subtle text-info-emphasis','completed':'bg-success-subtle text-success-emphasis','departed':'bg-secondary-subtle text-secondary-emphasis'} %}
             {% for p in pilgrims %}
             {% set sv = p.status or '' %}
             <tr>
-              <td><span class="badge rounded-pill fs-7 {{ 'bg-primary-subtle text-primary-emphasis' if p.user_id != 0 else 'bg-success-subtle text-success-emphasis' }}">{{ '📱' if p.user_id != 0 else '🌐' }}</span></td>
-              <td><span class="secret-badge">TG{{ '%04d'|format(p.id) }}</span></td>
-              <td><strong>{{ p.name }}</strong></td>
-              <td><span class="passport-text">{{ p.passport }}</span></td>
-              <td>{% if p.flight_number %}<span class="badge bg-secondary-subtle text-secondary-emphasis fw-medium">{{ p.flight_number }}</span>{% endif %}</td>
-              <td class="small text-muted">{{ p.departure_time }}</td>
-              <td class="small text-muted">{{ p.departure_location }}</td>
+              <td class="d-none d-sm-table-cell"><span class="badge rounded-pill fs-7 {{ 'bg-primary-subtle text-primary-emphasis' if p.user_id != 0 else 'bg-success-subtle text-success-emphasis' }}">{{ '📱' if p.user_id != 0 else '🌐' }}</span></td>
+              <td><span class="secret-badge" style="font-size:.55rem">TG{{ '%04d'|format(p.id) }}</span></td>
+              <td><strong style="font-size:.72rem">{{ p.name }}</strong></td>
+              <td class="d-none d-sm-table-cell"><span class="passport-text" style="font-size:.68rem">{{ p.passport }}</span></td>
+              <td>{% if p.flight_number %}<span class="badge bg-secondary-subtle text-secondary-emphasis fw-medium" style="font-size:.6rem">{{ p.flight_number }}</span>{% endif %}</td>
+              <td class="small text-muted d-none d-md-table-cell">{{ p.departure_time }}</td>
+              <td class="small text-muted d-none d-md-table-cell">{{ p.departure_location }}</td>
               <td>
                 {% if sv and sv in styles %}
-                  <span class="badge {{ styles[sv] }} rounded-pill" style="font-size:.62rem">{{ sv.replace('_',' ')|title }}</span>
+                  <span class="badge {{ styles[sv] }} rounded-pill" style="font-size:.55rem">{{ sv.replace('_',' ')|title }}</span>
                 {% else %}
                   <form method="post" action="/api/update_status/{{ p.id }}" class="d-inline status-form">
-                    <select name="status" class="form-select form-select-sm" style="font-size:.62rem;padding:.1rem .25rem;width:85px;border-radius:50px;border:1px solid #ddd" onchange="this.form.submit()">
-                      <option value="">Set…</option>
+                    <select name="status" class="form-select form-select-sm" style="font-size:.55rem;padding:.1rem .2rem;width:70px;border-radius:50px;border:1px solid #ddd" onchange="this.form.submit()">
+                      <option value="">Set</option>
                       {% for sk, sl in [('processing','Processing'),('under_action','Under Action'),('completed','Completed'),('departed','Departed')] %}
                       <option value="{{ sk }}">{{ sl }}</option>
                       {% endfor %}
@@ -516,7 +527,7 @@ ADMIN_HTML = """<!DOCTYPE html>
                   </form>
                 {% endif %}
               </td>
-              <td class="small text-muted">{{ p.created_at[:10] }}</td>
+              <td class="small text-muted d-none d-sm-table-cell">{{ p.created_at[:10] }}</td>
               <td>
                 <form method="post" action="/admin/delete/{{ p.id }}" onsubmit="return confirm('{{ L.confirm_delete }}')" class="d-inline">
                   <button class="btn btn-outline-danger btn-sm border-0 px-1 py-0"><i class="bi bi-trash3"></i></button>
@@ -561,8 +572,9 @@ h2{font-family:'Playfair Display',Georgia,serif;font-weight:800;color:#1a5632;fo
 .alert-custom{background:#fef2f2;border:1px solid #fecaca;border-left:4px solid #dc2626;border-radius:8px;padding:.6rem .9rem;font-size:.8rem;color:#991b1b;margin-bottom:1.25rem;font-weight:500}
 .footer-text{margin-top:1.75rem;padding-top:1rem;border-top:1px solid #f3f4f6;font-size:.7rem;color:#9ca3af}
 .footer-text span{color:#c9a227;font-weight:600}
+@media(max-width:575px){.card-body{padding:1.5rem 1.25rem}h2{font-size:1.3rem}.form-control{padding:.6rem .8rem;font-size:.85rem}.btn-primary{padding:.65rem}}
 </style></head><body>
-<div class="container"><div class="row justify-content-center"><div class="col-md-5">
+<div class="container"><div class="row justify-content-center"><div class="col-11 col-sm-10 col-md-5">
 <div class="card"><div class="card-body text-center">
   <div style="font-size:2.25rem;margin-bottom:.15rem;line-height:1">🔐</div>
   <h2>{{ L.admin_login }}</h2>
@@ -604,9 +616,10 @@ h2{font-family:'Playfair Display',Georgia,serif;font-weight:800;color:#1a5632;fo
 .alert-danger{background:#fce4ec;color:#b71c1c}
 .request-id{display:inline-block;background:rgba(201,162,39,.1);color:#c9a227;border-radius:50px;padding:.2rem .7rem;font-size:.72rem;font-weight:700;font-family:'SF Mono',monospace}
 footer{text-align:center;padding:1.5rem;color:rgba(255,255,255,.4);font-size:.7rem}
+@media(max-width:575px){.card{margin:1rem auto}.card-body{padding:1.25rem}h2{font-size:1.15rem}}
 </style></head><body>
-<div style="padding:1.5rem 1rem 0;text-align:center">
-  <a href="/" style="color:rgba(255,255,255,.5);text-decoration:none;font-size:.75rem"><i class="bi bi-house"></i> Home</a>
+<div style="padding:1rem .8rem 0;text-align:center">
+  <a href="/" style="color:rgba(255,255,255,.5);text-decoration:none;font-size:.72rem"><i class="bi bi-house"></i> <span style="font-family:'Tajawal',sans-serif">الرئيسية</span></a>
 </div>
 <div class="card"><div class="card-body">
   <div class="text-center mb-3">
@@ -970,31 +983,32 @@ def organizer():
 .stats-label{color:#888;font-size:.78rem;font-weight:500}
 .search-box{border-radius:50px;padding:.5rem 1.2rem;border:1.5px solid #e5e7eb;background:#fafafa;font-size:.85rem}
 .search-box:focus{border-color:var(--g);box-shadow:0 0 0 4px rgba(201,162,39,.1);background:#fff}
+@media(max-width:575px){.stats-number{font-size:1.2rem}.stats-label{font-size:.65rem}}
 </style></head><body>
 
 <nav class="navbar navbar-expand-lg navbar-dark">
   <div class="container-fluid">
     <a class="navbar-brand" href="/organizer"><i class="bi bi-person-badge me-2"></i>{{ username }}</a>
-    <div class="d-flex gap-2 align-items-center">
-      <a href="/" class="btn btn-sm btn-outline-light py-1 px-2"><i class="bi bi-house"></i></a>
-      <a href="/form" class="btn btn-sm btn-light fw-semibold py-1"><i class="bi bi-plus-circle me-1"></i>New</a>
-      <span class="badge bg-white bg-opacity-25 px-2 py-1 fw-medium" style="font-size:.7rem">{{ role }}</span>
-      <a href="/logout" class="btn btn-sm btn-outline-light py-1"><i class="bi bi-box-arrow-right"></i></a>
+    <div class="d-flex gap-1 align-items-center" style="gap:.2rem!important">
+      <a href="/" class="btn btn-sm btn-outline-light py-1 px-1"><i class="bi bi-house"></i></a>
+      <a href="/form" class="btn btn-sm btn-light fw-semibold py-1 px-1"><i class="bi bi-plus-circle"></i></a>
+      <span class="badge bg-white bg-opacity-25 px-2 py-1 fw-medium d-none d-sm-inline" style="font-size:.65rem">{{ role }}</span>
+      <a href="/logout" class="btn btn-sm btn-outline-light py-1 px-1"><i class="bi bi-box-arrow-right"></i></a>
     </div>
   </div>
 </nav>
 
-<div class="container-fluid py-4 px-lg-4">
-  <div class="row g-3 mb-4">
-    <div class="col-4"><div class="card p-3 text-center">
+<div class="container-fluid py-3 px-2 px-sm-4">
+  <div class="row g-2 g-sm-3 mb-3 mb-sm-4">
+    <div class="col-4"><div class="card p-2 p-sm-3 text-center">
       <div class="stats-number">{{ total }}</div>
       <div class="stats-label">Total</div>
     </div></div>
-    <div class="col-4"><div class="card p-3 text-center">
+    <div class="col-4"><div class="card p-2 p-sm-3 text-center">
       <div class="stats-number">{{ pilgrims|length }}</div>
-      <div class="stats-label">Displayed</div>
+      <div class="stats-label">Disp.</div>
     </div></div>
-    <div class="col-4"><div class="card p-3 text-center">
+    <div class="col-4"><div class="card p-2 p-sm-3 text-center">
       <div class="stats-number" style="font-size:1rem;text-transform:capitalize">{{ role }}</div>
       <div class="stats-label">Role</div>
     </div></div>
@@ -1012,21 +1026,21 @@ def organizer():
       <div class="table-responsive" style="border-radius:12px;border:1px solid #f0f0f0">
         <table class="table table-hover align-middle mb-0">
           <thead><tr>
-            <th>🔐</th><th>Name</th><th>Passport</th><th>Flight</th><th>Time</th><th>Location</th><th>Status</th><th>Date</th>
+            <th style="width:48px">🔐</th><th>Name</th><th class="d-none d-sm-table-cell">Passport</th><th>Flight</th><th class="d-none d-md-table-cell">Time</th><th class="d-none d-md-table-cell">Location</th><th>Status</th><th class="d-none d-sm-table-cell">Date</th>
           </tr></thead>
           <tbody>
             {% set sm={'processing':'Processing','under_action':'Under Action','completed':'Completed','departed':'Departed'} %}
             {% set sc={'processing':'bg-warning-subtle text-warning-emphasis','under_action':'bg-info-subtle text-info-emphasis','completed':'bg-success-subtle text-success-emphasis','departed':'bg-secondary-subtle text-secondary-emphasis'} %}
             {% for p in pilgrims %}
             <tr>
-              <td><span class="secret-badge">TG{{ '%04d'|format(p.id) }}</span></td>
-              <td><strong>{{ p.name }}</strong></td>
-              <td><span class="passport-text">{{ p.passport }}</span></td>
-              <td>{% if p.flight_number %}<span class="badge bg-secondary-subtle text-secondary-emphasis fw-medium">{{ p.flight_number }}</span>{% endif %}</td>
-              <td class="small text-muted">{{ p.departure_time }}</td>
-              <td class="small text-muted">{{ p.departure_location }}</td>
-              <td>{% if p.status and p.status in sm %}<span class="badge {{ sc[p.status] }} rounded-pill" style="font-size:.62rem">{{ sm[p.status] }}</span>{% else %}<span class="text-muted small">—</span>{% endif %}</td>
-              <td class="small text-muted">{{ p.created_at[:10] }}</td>
+              <td><span class="secret-badge" style="font-size:.55rem">TG{{ '%04d'|format(p.id) }}</span></td>
+              <td><strong style="font-size:.72rem">{{ p.name }}</strong></td>
+              <td class="d-none d-sm-table-cell"><span class="passport-text" style="font-size:.68rem">{{ p.passport }}</span></td>
+              <td>{% if p.flight_number %}<span class="badge bg-secondary-subtle text-secondary-emphasis fw-medium" style="font-size:.6rem">{{ p.flight_number }}</span>{% endif %}</td>
+              <td class="small text-muted d-none d-md-table-cell">{{ p.departure_time }}</td>
+              <td class="small text-muted d-none d-md-table-cell">{{ p.departure_location }}</td>
+              <td>{% if p.status and p.status in sm %}<span class="badge {{ sc[p.status] }} rounded-pill" style="font-size:.55rem">{{ sm[p.status] }}</span>{% else %}<span class="text-muted small">—</span>{% endif %}</td>
+              <td class="small text-muted d-none d-sm-table-cell">{{ p.created_at[:10] }}</td>
             </tr>
             {% else %}
             <tr><td colspan="8" class="text-center text-muted py-5">No submissions</td></tr>
@@ -1060,20 +1074,21 @@ def admin_users():
 .form-control:focus{border-color:var(--g);box-shadow:0 0 0 4px rgba(201,162,39,.1)}
 .btn-primary{background:linear-gradient(135deg,var(--p),var(--pd));border:none;border-radius:50px;font-weight:600;padding:.55rem;font-size:.82rem}
 .btn-primary:hover{box-shadow:0 4px 16px rgba(26,86,50,.2)}
+@media(max-width:575px){.table{font-size:.75rem}}
 </style></head><body>
 
 <nav class="navbar navbar-expand-lg navbar-dark">
   <div class="container-fluid">
     <a class="navbar-brand" href="/admin"><i class="bi bi-shield-lock me-2"></i>Users</a>
-    <div class="d-flex gap-2">
-      <a href="/" class="btn btn-sm btn-outline-light py-1 px-2"><i class="bi bi-house"></i></a>
-      <a href="/admin" class="btn btn-sm btn-outline-light py-1"><i class="bi bi-arrow-left me-1"></i>Back</a>
+    <div class="d-flex gap-1 align-items-center" style="gap:.2rem!important">
+      <a href="/" class="btn btn-sm btn-outline-light py-1 px-1"><i class="bi bi-house"></i></a>
+      <a href="/admin" class="btn btn-sm btn-outline-light py-1 px-1"><i class="bi bi-arrow-left"></i></a>
     </div>
   </div>
 </nav>
 
-<div class="container-fluid py-4 px-lg-4">
-  <div class="row g-4">
+<div class="container-fluid py-3 px-2 px-sm-4">
+  <div class="row g-3 g-sm-4">
     <div class="col-lg-4">
       <div class="card"><div class="card-header"><i class="bi bi-person-plus me-2"></i>Add User</div>
       <div class="card-body p-4">
@@ -1096,14 +1111,14 @@ def admin_users():
       <div class="card-body p-3">
         <div class="table-responsive" style="border-radius:12px;border:1px solid #f0f0f0">
           <table class="table table-hover mb-0">
-            <thead><tr><th>ID</th><th>Username</th><th>Role</th><th>Created</th><th></th></tr></thead>
+            <thead><tr><th>ID</th><th>Username</th><th>Role</th><th class="d-none d-sm-table-cell">Created</th><th></th></tr></thead>
             <tbody>
               {% for u in users %}
               <tr>
                 <td class="text-muted small">{{ u.id }}</td>
-                <td><strong>{{ u.username }}</strong></td>
-                <td><span class="badge bg-{{ 'success' if u.role == 'organizer' else 'info' }} rounded-pill">{{ u.role }}</span></td>
-                <td class="small text-muted">{{ u.created_at[:10] }}</td>
+                <td><strong style="font-size:.78rem">{{ u.username }}</strong></td>
+                <td><span class="badge bg-{{ 'success' if u.role == 'organizer' else 'info' }} rounded-pill" style="font-size:.6rem">{{ u.role }}</span></td>
+                <td class="small text-muted d-none d-sm-table-cell">{{ u.created_at[:10] }}</td>
                 <td>
                   <form method="post" action="/admin/users/delete/{{ u.id }}" onsubmit="return confirm('Delete user?')">
                     <button class="btn btn-outline-danger btn-sm border-0 px-1"><i class="bi bi-trash3"></i></button>
