@@ -42,23 +42,27 @@ PWA_TAGS = """<meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="manifest" href="/manifest.json">"""
 
 # ── Shared CSS (injected into all templates) ──
-SHARED_CSS = f"""
-:root{{--p:{DS['primary']};--pd:{DS['primary-dark']};--pd2:{DS['primary-deeper']};--g:{DS['gold']};--gl:{DS['gold-light']};--gd:{DS['gold-dim']};--c:{DS['cream']};--cd:{DS['cream-dark']};--fe:{DS['font-en']};--fa:{DS['font-ar']};--fd:{DS['font-display']}}
-*{{font-family:var(--fe);-webkit-font-smoothing:antialiased}}
-body{{background:var(--c);min-height:100vh}}
-.navbar{{background:linear-gradient(135deg,var(--p),var(--pd))!important;box-shadow:0 2px 16px rgba(0,0,0,.1)}}
-.navbar-brand{{font-family:var(--fd);font-weight:800;font-size:1.05rem;letter-spacing:.3px}}
-.card{{border:none;border-radius:18px;box-shadow:0 2px 12px rgba(0,0,0,.04);background:#fff}}
-.card-header{{background:0 0;border-bottom:1.5px solid rgba(201,162,39,.2);font-weight:700;padding:1rem 1.25rem;color:var(--p)}}
-.table{{font-size:.82rem;margin:0}}
-.table th{{font-weight:600;color:#555;border-top:none;background:#fafafa;font-size:.72rem;text-transform:uppercase;letter-spacing:.3px;padding:.6rem .5rem}}
-.table td{{padding:.5rem;vertical-align:middle}}
-.table-hover tbody tr:hover{{background:#f5fff5}}
-.passport-text{{font-family:'SF Mono','Courier New',monospace;font-weight:700;letter-spacing:.8px;font-size:.78rem}}
-.secret-badge{{font-size:.68rem;color:#c62828;font-weight:800;background:#fff5f5;padding:.15rem .5rem;border-radius:6px;font-family:'SF Mono',monospace}}
-footer{{text-align:center;padding:2rem;color:#bbb;font-size:.75rem}}
-footer::before{{content:'';display:block;width:32px;height:1.5px;background:var(--g);margin:0 auto .8rem;opacity:.3}}
-"""
+_DS = DS
+SHARED_CSS = (
+    ":root{--p:" + _DS['primary'] + ";--pd:" + _DS['primary-dark'] + ";--pd2:" + _DS['primary-deeper']
+    + ";--g:" + _DS['gold'] + ";--gl:" + _DS['gold-light'] + ";--gd:" + _DS['gold-dim']
+    + ";--c:" + _DS['cream'] + ";--cd:" + _DS['cream-dark']
+    + ";--fe:" + _DS['font-en'] + ";--fa:" + _DS['font-ar'] + ";--fd:" + _DS['font-display'] + "}"
+    + "*{font-family:var(--fe);-webkit-font-smoothing:antialiased}"
+    + "body{background:var(--c);min-height:100vh}"
+    + ".navbar{background:linear-gradient(135deg,var(--p),var(--pd))!important;box-shadow:0 2px 16px rgba(0,0,0,.1)}"
+    + ".navbar-brand{font-family:var(--fd);font-weight:800;font-size:1.05rem;letter-spacing:.3px}"
+    + ".card{border:none;border-radius:18px;box-shadow:0 2px 12px rgba(0,0,0,.04);background:#fff}"
+    + ".card-header{background:0 0;border-bottom:1.5px solid rgba(201,162,39,.2);font-weight:700;padding:1rem 1.25rem;color:var(--p)}"
+    + ".table{font-size:.82rem;margin:0}"
+    + ".table th{font-weight:600;color:#555;border-top:none;background:#fafafa;font-size:.72rem;text-transform:uppercase;letter-spacing:.3px;padding:.6rem .5rem}"
+    + ".table td{padding:.5rem;vertical-align:middle}"
+    + ".table-hover tbody tr:hover{background:#f5fff5}"
+    + ".passport-text{font-family:'SF Mono','Courier New',monospace;font-weight:700;letter-spacing:.8px;font-size:.78rem}"
+    + ".secret-badge{font-size:.68rem;color:#c62828;font-weight:800;background:#fff5f5;padding:.15rem .5rem;border-radius:6px;font-family:'SF Mono',monospace}"
+    + "footer{text-align:center;padding:2rem;color:#bbb;font-size:.75rem}"
+    + "footer::before{content:'';display:block;width:32px;height:1.5px;background:var(--g);margin:0 auto .8rem;opacity:.3}"
+)
 
 
 def notify_admin(name, passport, flight=""):
@@ -118,17 +122,17 @@ def handle_submission(ticket_bytes, ticket_name, passport_bytes, passport_name, 
 
 # ────────────────────── Form Page (PUBLIC_HTML) ──────────────────────
 
-PUBLIC_HTML = rf"""<!DOCTYPE html>
+PUBLIC_HTML = """<!DOCTYPE html>
 <html lang="en"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Travelers Ghana — Pilgrim Registration</title>
-{PWA_TAGS}
+__PWA_TAGS__
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="{FONT_URL}" rel="stylesheet">
+<link href="__FONT_URL__" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
 <style>
-{SHARED_CSS}
+__SHARED_CSS__
 .hero{{background:linear-gradient(160deg,var(--p),var(--pd) 40%,var(--pd2));padding:1.5rem 1rem 3.5rem;text-align:center;position:relative;overflow:hidden}}
 .hero::before{{content:'';position:absolute;inset:0;background:radial-gradient(circle at 20% 50%,rgba(201,162,39,.08) 0%,transparent 50%),radial-gradient(circle at 80% 50%,rgba(255,255,255,.04) 0%,transparent 50%);pointer-events:none}}
 .hero::after{{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='120' height='120' viewBox='0 0 120 120' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.025'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");pointer-events:none;opacity:.5}}
@@ -392,7 +396,7 @@ document.getElementById("submitForm").addEventListener("submit",async function(e
 });
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body></html>"""
+</body></html>""".replace("__SHARED_CSS__", SHARED_CSS).replace("__FONT_URL__", FONT_URL).replace("__PWA_TAGS__", PWA_TAGS)
 
 # ────────────────────── Admin Panel ──────────────────────
 
