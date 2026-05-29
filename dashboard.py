@@ -405,7 +405,7 @@ document.getElementById("submitForm").addEventListener("submit",async function(e
 });
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body></html>""".replace("__SHARED_CSS__", SHARED_CSS).replace("__FONT_URL__", FONT_URL).replace("__PWA_TAGS__", PWA_TAGS)
+</body></html>""".replace("__SHARED_CSS__", SHARED_CSS).replace("__FONT_URL__", FONT_URL).replace("__PWA_TAGS__", PWA_TAGS).replace("{{", "{").replace("}}", "}")
 
 # ────────────────────── Admin Panel ──────────────────────
 
@@ -518,7 +518,7 @@ ADMIN_HTML = """<!DOCTYPE html>
                   <span class="badge {{ styles[sv] }} rounded-pill" style="font-size:.55rem">{{ sv.replace('_',' ')|title }}</span>
                 {% else %}
                   <form method="post" action="/api/update_status/{{ p.id }}" class="d-inline status-form">
-                    <select name="status" class="form-select form-select-sm" style="font-size:.55rem;padding:.1rem .2rem;width:70px;border-radius:50px;border:1px solid #ddd" onchange="this.form.submit()">
+                    <select name="status" class="form-select form-select-sm" style="font-size:.55rem;padding:.1rem .2rem;width:65px;border-radius:50px;border:1px solid #ddd" onchange="this.form.submit()">
                       <option value="">Set</option>
                       {% for sk, sl in [('processing','Processing'),('under_action','Under Action'),('completed','Completed'),('departed','Departed')] %}
                       <option value="{{ sk }}">{{ sl }}</option>
@@ -929,6 +929,7 @@ h2{font-family:'Playfair Display',Georgia,serif;font-weight:800;color:#1a5632;fo
 .gold-line{width:36px;height:2px;background:linear-gradient(90deg,transparent,#c9a227,transparent);margin:.6rem auto 1rem;border-radius:2px}
 .alert-custom{background:#fef2f2;border:1px solid #fecaca;border-left:4px solid #dc2626;border-radius:8px;padding:.6rem .9rem;font-size:.8rem;color:#991b1b;margin-bottom:1.25rem;font-weight:500}
 .footer-text{margin-top:1.75rem;padding-top:1rem;border-top:1px solid #f3f4f6;font-size:.7rem;color:rgba(255,255,255,.4)}
+@media(max-width:575px){.card-body{padding:1.5rem 1.2rem}h2{font-size:1.3rem}}
 </style></head><body>
 <div class="container"><div class="row justify-content-center"><div class="col-md-5">
 <div class="card"><div class="card-body text-center">
@@ -1039,7 +1040,7 @@ def organizer():
               <td>{% if p.flight_number %}<span class="badge bg-secondary-subtle text-secondary-emphasis fw-medium" style="font-size:.6rem">{{ p.flight_number }}</span>{% endif %}</td>
               <td class="small text-muted d-none d-md-table-cell">{{ p.departure_time }}</td>
               <td class="small text-muted d-none d-md-table-cell">{{ p.departure_location }}</td>
-              <td>{% if p.status and p.status in sm %}<span class="badge {{ sc[p.status] }} rounded-pill" style="font-size:.55rem">{{ sm[p.status] }}</span>{% else %}<span class="text-muted small">—</span>{% endif %}</td>
+              <td>{% if p.status and p.status in sm %}<span class="badge {{ sc[p.status] }} rounded-pill" style="font-size:.55rem">{{ sm[p.status] }}</span>{% else %}<span class="text-muted small" style="font-size:.6rem">—</span>{% endif %}</td>
               <td class="small text-muted d-none d-sm-table-cell">{{ p.created_at[:10] }}</td>
             </tr>
             {% else %}
